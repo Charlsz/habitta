@@ -30,37 +30,32 @@ export async function getOrganizationById(id: string): Promise<Organization> {
   return data as Organization;
 }
 
-/**
- * Crea una organizacion y asigna al usuario como 'owner'.
- * Usa una funcion RPC con SECURITY DEFINER para evitar el problema de
- * auth.uid() = null en Server Actions de Next.js cuando las cookies
- * no propagan correctamente el JWT de Supabase.
- * El user_id viene validado desde requireAuth() en el Server Action.
- */
 export async function createOrganization(
   org: OrganizationInsert,
   userId: string
 ): Promise<Organization> {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseUrl    = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
   if (!serviceRoleKey || !supabaseUrl) {
     throw new Error("Configuracion de Supabase incompleta. Falta SUPABASE_SERVICE_ROLE_KEY.");
   }
 
-  // Usamos el admin client para llamar la RPC con SECURITY DEFINER
-  // El user_id ya fue validado por requireAuth() antes de llegar aqui
   const admin = createAdminClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
   const { data, error } = await admin.rpc("create_organization_for_user", {
-    p_name: org.name,
-    p_type: org.type,
-    p_user_id: userId,
+    p_name:             org.name,
+    p_type:             org.type,
+    p_user_id:          userId,
+    p_address:          org.address          || null,
+    p_city:             org.city             || null,
+    p_phone:            org.phone            || null,
+    p_email:            org.email            || null,
+    p_other_type_label: org.other_type_label || null,
   });
 
   if (error) throw new Error(error.message);
-
   return data as Organization;
 }
