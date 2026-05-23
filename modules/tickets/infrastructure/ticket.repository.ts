@@ -16,6 +16,15 @@ export type OrgMember = {
   profiles: { full_name: string | null } | null;
 };
 
+// creator_id -> profiles (FK: tickets_creator_id_fkey)
+// assigned_to -> auth.users (no tiene join directo a profiles via FK)
+const TICKET_SELECT = `
+  *,
+  profiles:profiles!tickets_creator_id_fkey (full_name),
+  assets (name),
+  ticket_categories (name, color)
+`;
+
 export async function getTickets(
   orgId: string,
   filters?: { status?: string; asset_id?: string }
@@ -23,13 +32,7 @@ export async function getTickets(
   const supabase = await createClient();
   let query = supabase
     .from("tickets")
-    .select(`
-      *,
-      profiles   (full_name),
-      assets     (name),
-      assignee:profiles!tickets_assigned_to_fkey (full_name),
-      ticket_categories (name, color)
-    `)
+    .select(TICKET_SELECT)
     .eq("organization_id", orgId)
     .order("created_at", { ascending: false });
 
@@ -49,13 +52,7 @@ export async function getTicketById(id: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("tickets")
-    .select(`
-      *,
-      profiles   (full_name),
-      assets     (name),
-      assignee:profiles!tickets_assigned_to_fkey (full_name),
-      ticket_categories (name, color)
-    `)
+    .select(TICKET_SELECT)
     .eq("id", id)
     .single();
   if (error) throw new Error(error.message);
