@@ -176,5 +176,7 @@ export async function getOrgMembers(orgId: string): Promise<OrgMember[]> {
     .select("user_id, role, profiles (full_name)")
     .eq("organization_id", orgId);
   if (error) throw new Error(error.message);
-  return (data ?? []) as OrgMember[];
+  // Supabase infiere profiles como array por no tener tipos generados.
+  // El cast via unknown es seguro: la query retorna un objeto 1-a-1 en runtime.
+  return (data ?? []) as unknown as OrgMember[];
 }
