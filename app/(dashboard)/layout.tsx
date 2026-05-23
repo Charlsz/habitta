@@ -1,4 +1,5 @@
 import { logoutAction } from "@/modules/auth/application/auth.actions";
+import { requireAuth } from "@/modules/auth/application/auth.guard";
 import Link from "next/link";
 import { ReactNode } from "react";
 import { Button } from "@/modules/core/components";
@@ -17,7 +18,24 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/scheduling",    label: "Agenda",           dot: "#9B8BB4" },
 ];
 
-export default function DashboardLayout({ children }: { children: ReactNode }) {
+export default async function DashboardLayout({ children }: { children: ReactNode }) {
+  // Proteccion a nivel de layout: si no hay sesion, redirige al login
+  const user = await requireAuth();
+
+  // Nombre visible: full_name del metadata, o email como fallback
+  const displayName =
+    (user.user_metadata?.full_name as string | undefined) ||
+    user.email ||
+    "Usuario";
+
+  // Iniciales para el avatar
+  const initials = displayName
+    .split(" ")
+    .map((w: string) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[var(--background)] text-[var(--foreground)]">
 
@@ -34,7 +52,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </span>
         </div>
 
-        {/* Navegación */}
+        {/* Navegacion */}
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {NAV_ITEMS.map(({ href, label, dot }) => (
             <Link
@@ -73,13 +91,25 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <header
           className={[
             "h-16 shrink-0 bg-[var(--background)] border-b border-[var(--border)]",
-            "flex items-center px-8 justify-end gap-4",
+            "flex items-center px-8 justify-end gap-3",
           ].join(" ")}
         >
-          <span className="text-sm font-medium text-[var(--muted)]">Perfil</span>
+          {/* Nombre del usuario */}
+          <span className="text-sm font-medium text-[var(--muted)] hidden sm:block">
+            {displayName}
+          </span>
+
+          {/* Avatar con iniciales */}
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+            style={{ backgroundColor: "#d4a373" }}
+            title={user.email}
+          >
+            {initials}
+          </div>
         </header>
 
-        {/* Página */}
+        {/* Pagina */}
         <main className="flex-1 overflow-auto p-8">
           {children}
         </main>
