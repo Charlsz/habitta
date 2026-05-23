@@ -41,7 +41,6 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
             <select 
               name="status" 
               defaultValue={ticket.status}
-              onChange="this.form.submit()" // Pequeño truco nativo, aunque en React 19 / App Router mejor usar un client component o un botón Save
               className="text-sm border-gray-300 rounded-md border p-1"
             >
               <option value="open">Cambiar a: Abierto</option>
@@ -49,7 +48,7 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
               <option value="resolved">Cambiar a: Resuelto</option>
               <option value="closed">Cambiar a: Cerrado</option>
             </select>
-            <button type="submit" className="ml-2 bg-gray-100 px-2 py-1 rounded text-xs hidden sm:inline-block">Ok</button>
+            <button type="submit" className="ml-2 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-md text-xs font-medium transition-colors">Guardar</button>
           </form>
         </div>
 
@@ -102,7 +101,10 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
         </div>
 
         {/* Input de respuesta administrativa */}
-        <form action={addTicketCommentAction} className="mt-6 bg-white p-4 rounded-xl border shadow-sm flex flex-col items-end">
+        <form action={async (formData) => {
+          "use server";
+          await addTicketCommentAction(formData);
+        }} className="mt-6 bg-white p-4 rounded-xl border shadow-sm flex flex-col items-end">
            <input type="hidden" name="ticket_id" value={ticket.id} />
            <textarea 
              name="message" 

@@ -11,7 +11,7 @@ export const assetSchema = z.object({
 });
 
 export type AssetStatus = z.infer<typeof AssetStatusEnum>;
-export type AssetInsert = z.infer<typeof assetSchema>;
+export type AssetInsert = z.input<typeof assetSchema>;
 
 export interface Asset {
   id: string;

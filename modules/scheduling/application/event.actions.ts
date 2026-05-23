@@ -22,7 +22,7 @@ export async function createEventAction(formData: FormData) {
 
     // Validar integridad temporal y tipos
     const parsed = eventSchema.safeParse(data);
-    if (!parsed.success) return { error: parsed.error.errors[0]?.message || "Datos inválidos" };
+    if (!parsed.success) return { error: parsed.error.issues[0]?.message || "Datos inválidos" };
 
     // Validar cruce de horarios (Solo si afecta a un Activo)
     if (parsed.data.asset_id) {

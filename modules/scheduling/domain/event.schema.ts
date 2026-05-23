@@ -16,7 +16,7 @@ export const eventSchema = z.object({
 });
 
 export type EventStatus = z.infer<typeof EventStatusEnum>;
-export type EventInsert = z.infer<typeof eventSchema>;
+export type EventInsert = z.input<typeof eventSchema>;
 
 export interface ScheduleEvent {
   id: string;

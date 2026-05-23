@@ -47,9 +47,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
         {orgs.length > 1 && (
           <form className="flex items-center gap-2 bg-white px-3 py-1.5 border rounded-lg shadow-sm">
             <span className="text-xs font-semibold text-gray-500">ORG:</span>
-            <select name="org" defaultValue={currentOrgId} onChange="this.form.submit()" className="text-sm font-medium outline-none bg-transparent">
+            <select name="org" defaultValue={currentOrgId} className="text-sm font-medium outline-none bg-transparent">
               {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
             </select>
+            <button type="submit" className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded text-xs font-medium transition-colors">Ver</button>
           </form>
         )}
       </div>

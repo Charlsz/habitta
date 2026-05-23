@@ -13,7 +13,7 @@ export const ticketSchema = z.object({
 
 export type TicketStatus = z.infer<typeof TicketStatusEnum>;
 export type TicketPriority = z.infer<typeof TicketPriorityEnum>;
-export type TicketInsert = z.infer<typeof ticketSchema>;
+export type TicketInsert = z.input<typeof ticketSchema>;
 
 // Extendemos del insert para mantener Single Source of Truth
 export interface Ticket extends TicketInsert {

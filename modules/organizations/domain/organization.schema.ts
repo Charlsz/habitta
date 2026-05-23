@@ -8,7 +8,7 @@ export const organizationSchema = z.object({
 });
 
 export type OrganizationType = z.infer<typeof OrganizationTypeEnum>;
-export type OrganizationInsert = z.infer<typeof organizationSchema>;
+export type OrganizationInsert = z.input<typeof organizationSchema>;
 
 export interface Organization {
   id: string;
