@@ -36,11 +36,12 @@ export async function createTicketAction(formData: FormData) {
 
     const data = {
       organization_id: orgId,
-      asset_id:    rawData.asset_id  ? String(rawData.asset_id)  : undefined,
+      asset_id:    rawData.asset_id    ? String(rawData.asset_id)    : undefined,
+      category_id: rawData.category_id ? String(rawData.category_id) : undefined,
       title:       String(rawData.title),
       description: String(rawData.description),
       priority:    String(rawData.priority),
-      due_date:    rawData.due_date  ? String(rawData.due_date)  : undefined,
+      due_date:    rawData.due_date    ? String(rawData.due_date)    : undefined,
     };
 
     const parsed = ticketSchema.safeParse(data);
@@ -53,24 +54,22 @@ export async function createTicketAction(formData: FormData) {
       if (!assetIsValid) return { error: "El activo seleccionado no pertenece a esta organizaci\u00f3n" };
     }
 
-    const newTicket = await createTicket(parsed.data, user.id);
+    const newTicket = await createTicket(
+      { ...parsed.data, category_id: data.category_id ?? null },
+      user.id
+    );
 
     const file = formData.get("attachment") as File;
     if (file && file.size > 0) {
       await uploadTicketAttachment(file, orgId, newTicket.id, user.id);
     }
 
-    // Audit log (fire-and-forget)
     createAuditLog({
-      orgId,
-      userId:     user.id,
-      entityType: "ticket",
-      entityId:   newTicket.id,
-      action:     "created",
-      newValue:   { title: parsed.data.title, priority: parsed.data.priority, status: "open" },
+      orgId, userId: user.id, entityType: "ticket", entityId: newTicket.id,
+      action: "created",
+      newValue: { title: parsed.data.title, priority: parsed.data.priority, status: "open" },
     });
 
-    // Notificaciones (fire-and-forget)
     notifyOrgAdmins(
       orgId,
       `\ud83c\udfab Nuevo ticket: ${parsed.data.title}`,
@@ -92,44 +91,29 @@ export async function changeTicketStatusAction(ticketId: string, status: TicketS
     const orgId = await getTicketOrganizationId(ticketId);
     await requireOrgRole(orgId, ["owner", "admin", "member"]);
 
-    // Capturar estado anterior antes de actualizar
     let previousStatus: string | null = null;
     try {
       const admin = getAdmin();
-      const { data: t } = await admin
-        .from("tickets")
-        .select("status")
-        .eq("id", ticketId)
-        .single();
+      const { data: t } = await admin.from("tickets").select("status").eq("id", ticketId).single();
       previousStatus = t?.status ?? null;
     } catch { /* continuar */ }
 
     await updateTicketStatus(ticketId, status);
 
-    // Audit log
     createAuditLog({
-      orgId,
-      userId:     user.id,
-      entityType: "ticket",
-      entityId:   ticketId,
-      action:     "status_changed",
-      oldValue:   previousStatus ? { status: previousStatus } : null,
-      newValue:   { status },
+      orgId, userId: user.id, entityType: "ticket", entityId: ticketId,
+      action: "status_changed",
+      oldValue: previousStatus ? { status: previousStatus } : null,
+      newValue: { status },
     });
 
-    // Notificaci\u00f3n al creador si se resuelve
     if (status === "resolved") {
       try {
         const admin = getAdmin();
-        const { data: ticket } = await admin
-          .from("tickets")
-          .select("creator_id, title")
-          .eq("id", ticketId)
-          .single();
+        const { data: ticket } = await admin.from("tickets").select("creator_id, title").eq("id", ticketId).single();
         if (ticket) {
           createNotification(
-            orgId,
-            ticket.creator_id,
+            orgId, ticket.creator_id,
             "\u2705 Tu ticket fue resuelto",
             `"${ticket.title}" ha sido marcado como resuelto.`,
             "success"
@@ -157,15 +141,10 @@ export async function respondToTicketAction(formData: FormData) {
     if (!response) return { error: "La respuesta no puede estar vac\u00eda" };
 
     await respondToTicket(ticketId, response);
-
-    // Audit log
     createAuditLog({
-      orgId,
-      userId:     user.id,
-      entityType: "ticket",
-      entityId:   ticketId,
-      action:     "responded",
-      newValue:   { response: response.substring(0, 200) },
+      orgId, userId: user.id, entityType: "ticket", entityId: ticketId,
+      action: "responded",
+      newValue: { response: response.substring(0, 200) },
     });
 
     revalidatePath(`/tickets/${ticketId}`);
@@ -185,15 +164,9 @@ export async function assignTicketAction(formData: FormData) {
 
     const newAssignee = assignedTo && String(assignedTo) !== "" ? String(assignedTo) : null;
     await assignTicket(ticketId, newAssignee);
-
-    // Audit log
     createAuditLog({
-      orgId,
-      userId:     user.id,
-      entityType: "ticket",
-      entityId:   ticketId,
-      action:     "assigned",
-      newValue:   { assigned_to: newAssignee },
+      orgId, userId: user.id, entityType: "ticket", entityId: ticketId,
+      action: "assigned", newValue: { assigned_to: newAssignee },
     });
 
     revalidatePath(`/tickets/${ticketId}`);
@@ -210,22 +183,14 @@ export async function addTicketCommentAction(formData: FormData) {
     const user     = await requireAuth();
     const ticketId = formData.get("ticket_id") as string;
     const message  = formData.get("message")   as string;
-
     if (!message || message.trim().length === 0) return { error: "Mensaje vac\u00edo" };
 
     const orgId = await getTicketOrganizationId(ticketId);
     await requireOrgRole(orgId, ["owner", "admin", "member"]);
-
     await addTicketComment(ticketId, user.id, message);
-
-    // Audit log
     createAuditLog({
-      orgId,
-      userId:     user.id,
-      entityType: "ticket",
-      entityId:   ticketId,
-      action:     "commented",
-      newValue:   { message: message.substring(0, 200) },
+      orgId, userId: user.id, entityType: "ticket", entityId: ticketId,
+      action: "commented", newValue: { message: message.substring(0, 200) },
     });
 
     revalidatePath(`/tickets/${ticketId}`);

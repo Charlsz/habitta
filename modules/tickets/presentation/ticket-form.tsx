@@ -3,22 +3,26 @@
 import { useTransition, useState } from "react";
 import { createTicketAction } from "../application/ticket.actions";
 import { useRouter } from "next/navigation";
+import { CategoryBadge } from "@/modules/ticket-categories/presentation/category-badge";
+import type { TicketCategory } from "@/modules/ticket-categories/domain/category.schema";
 
 interface FormProps {
   organizations: { id: string; name: string }[];
   assets:        { id: string; name: string; organization_id: string }[];
+  categoriesByOrg: Record<string, TicketCategory[]>;
 }
 
 const inputClass = "w-full mt-1 border border-[var(--border)] px-3 py-2 rounded-md text-sm outline-none focus:ring-2 focus:ring-[#d4a373] bg-white";
 const labelClass = "text-sm font-medium text-[var(--foreground)]";
 
-export function TicketForm({ organizations, assets }: FormProps) {
+export function TicketForm({ organizations, assets, categoriesByOrg }: FormProps) {
   const router = useRouter();
-  const [errorMsg, setErrorMsg]   = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [errorMsg, setErrorMsg]       = useState<string | null>(null);
+  const [isPending, startTransition]  = useTransition();
   const [selectedOrg, setSelectedOrg] = useState(organizations[0]?.id || "");
 
-  const filteredAssets = assets.filter((a) => a.organization_id === selectedOrg);
+  const filteredAssets     = assets.filter((a) => a.organization_id === selectedOrg);
+  const filteredCategories = categoriesByOrg[selectedOrg] ?? [];
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -26,18 +30,15 @@ export function TicketForm({ organizations, assets }: FormProps) {
     setErrorMsg(null);
     startTransition(async () => {
       const response = await createTicketAction(formData);
-      if (response?.error) {
-        setErrorMsg(response.error);
-      } else if (response?.success) {
-        router.push("/tickets");
-      }
+      if (response?.error) setErrorMsg(response.error);
+      else if (response?.success) router.push("/tickets");
     });
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5 habitta-card p-6">
 
-      {/* Organizaci\u00f3n y Activo */}
+      {/* Organización y Activo */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Organizaci\u00f3n</label>
@@ -54,7 +55,7 @@ export function TicketForm({ organizations, assets }: FormProps) {
           </select>
         </div>
         <div>
-          <label className={labelClass}>Activo (opcional)</label>
+          <label className={labelClass}>Activo <span className="text-xs habitta-muted">(opcional)</span></label>
           <select name="asset_id" className={inputClass}>
             <option value="">General \u2014 sin activo espec\u00edfico</option>
             {filteredAssets.map((ast) => (
@@ -64,7 +65,21 @@ export function TicketForm({ organizations, assets }: FormProps) {
         </div>
       </div>
 
-      {/* T\u00edtulo */}
+      {/* Categoría */}
+      <div>
+        <label className={labelClass}>Categor\u00eda</label>
+        {filteredCategories.length === 0 ? (
+          <p className="text-xs habitta-muted mt-1 italic">No hay categor\u00edas configuradas para esta organizaci\u00f3n.</p>
+        ) : (
+          <select name="category_id" className={inputClass} required>
+            {filteredCategories.map((cat) => (
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {/* Título */}
       <div>
         <label className={labelClass}>T\u00edtulo de la incidencia</label>
         <input
@@ -76,7 +91,7 @@ export function TicketForm({ organizations, assets }: FormProps) {
         />
       </div>
 
-      {/* Descripci\u00f3n */}
+      {/* Descripción */}
       <div>
         <label className={labelClass}>Descripci\u00f3n detallada</label>
         <textarea
@@ -88,7 +103,7 @@ export function TicketForm({ organizations, assets }: FormProps) {
         />
       </div>
 
-      {/* Prioridad + Fecha l\u00edmite + Adjunto */}
+      {/* Prioridad + Fecha límite + Adjunto */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <label className={labelClass}>Prioridad</label>

@@ -1,17 +1,17 @@
 import { createClient } from "@/modules/core/infrastructure/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
-import { Ticket, TicketComment, TicketInsert, TicketStatus } from "../domain/ticket.schema";
+import type { TicketInsert } from "../domain/ticket.schema";
 
 function getAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  return createAdminClient(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
 }
 
 export async function getTickets(
-  organizationId: string,
+  orgId: string,
   filters?: { status?: string; asset_id?: string }
 ) {
   const supabase = await createClient();
@@ -19,19 +19,24 @@ export async function getTickets(
     .from("tickets")
     .select(`
       *,
-      assets (name),
-      profiles!tickets_creator_id_fkey (full_name),
-      assignee:profiles!tickets_assigned_to_fkey (full_name)
+      profiles   (full_name),
+      assets     (name),
+      assignee:profiles!tickets_assigned_to_fkey (full_name),
+      ticket_categories (name, color)
     `)
-    .eq("organization_id", organizationId)
+    .eq("organization_id", orgId)
     .order("created_at", { ascending: false });
 
-  if (filters?.status && filters.status !== "all")     query = query.eq("status", filters.status);
-  if (filters?.asset_id && filters.asset_id !== "all") query = query.eq("asset_id", filters.asset_id);
+  if (filters?.status && filters.status !== "all") {
+    query = query.eq("status", filters.status);
+  }
+  if (filters?.asset_id && filters.asset_id !== "all") {
+    query = query.eq("asset_id", filters.asset_id);
+  }
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  return data;
+  return data ?? [];
 }
 
 export async function getTicketById(id: string) {
@@ -40,9 +45,10 @@ export async function getTicketById(id: string) {
     .from("tickets")
     .select(`
       *,
-      assets (name, location),
-      profiles!tickets_creator_id_fkey (full_name),
-      assignee:profiles!tickets_assigned_to_fkey (full_name)
+      profiles   (full_name),
+      assets     (name),
+      assignee:profiles!tickets_assigned_to_fkey (full_name),
+      ticket_categories (name, color)
     `)
     .eq("id", id)
     .single();
@@ -50,87 +56,87 @@ export async function getTicketById(id: string) {
   return data;
 }
 
-export async function getOrgMembers(organizationId: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("organization_members")
-    .select("user_id, role, profiles (full_name)")
-    .eq("organization_id", organizationId);
-  if (error) throw new Error(error.message);
-  return (data ?? []) as { user_id: string; role: string; profiles: { full_name: string } }[];
-}
-
-export async function getTicketComments(ticketId: string): Promise<TicketComment[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("ticket_comments")
-    .select(`*, profiles(full_name)`)
-    .eq("ticket_id", ticketId)
-    .order("created_at", { ascending: true });
-  if (error) throw new Error(error.message);
-  return data as unknown as TicketComment[];
-}
-
-export async function createTicket(ticket: TicketInsert, userId: string): Promise<Ticket> {
+export async function createTicket(data: TicketInsert & { category_id?: string | null }, creatorId: string) {
   const admin = getAdmin();
-  const { data, error } = await admin.rpc("create_ticket_for_user", {
-    p_organization_id: ticket.organization_id,
-    p_creator_id:      userId,
-    p_asset_id:        ticket.asset_id || null,
-    p_title:           ticket.title,
-    p_description:     ticket.description,
-    p_priority:        ticket.priority,
-  });
+  const { data: ticket, error } = await admin
+    .from("tickets")
+    .insert({
+      ...data,
+      creator_id: creatorId,
+      status:     "open",
+    })
+    .select()
+    .single();
   if (error) throw new Error(error.message);
+  return ticket;
+}
 
-  const created = data as Ticket;
-  if (ticket.due_date) {
-    const { error: ddErr } = await admin
-      .from("tickets")
-      .update({ due_date: ticket.due_date })
-      .eq("id", created.id);
-    if (ddErr) throw new Error(ddErr.message);
-    created.due_date = ticket.due_date;
+export async function updateTicketStatus(ticketId: string, status: string) {
+  const admin = getAdmin();
+  const updates: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
+  if (status === "resolved" || status === "closed") {
+    updates.closed_at = new Date().toISOString();
   }
-  return created;
-}
-
-export async function updateTicketStatus(id: string, status: TicketStatus) {
-  const admin = getAdmin();
-  const { error } = await admin.rpc("update_ticket_status_for_user", {
-    p_ticket_id: id,
-    p_status:    status,
-    p_user_id:   null,
-  });
+  const { error } = await admin.from("tickets").update(updates).eq("id", ticketId);
   if (error) throw new Error(error.message);
 }
 
 export async function respondToTicket(ticketId: string, response: string) {
   const admin = getAdmin();
-  const { error } = await admin.rpc("respond_to_ticket", {
-    p_ticket_id: ticketId,
-    p_response:  response,
-  });
+  const { error } = await admin
+    .from("tickets")
+    .update({ response, updated_at: new Date().toISOString() })
+    .eq("id", ticketId);
   if (error) throw new Error(error.message);
 }
 
-export async function assignTicket(ticketId: string, assignedTo: string | null) {
+export async function assignTicket(ticketId: string, userId: string | null) {
   const admin = getAdmin();
-  const { error } = await admin.rpc("assign_ticket", {
-    p_ticket_id:   ticketId,
-    p_assigned_to: assignedTo,
-  });
+  const { error } = await admin
+    .from("tickets")
+    .update({ assigned_to: userId, updated_at: new Date().toISOString() })
+    .eq("id", ticketId);
   if (error) throw new Error(error.message);
 }
 
 export async function addTicketComment(ticketId: string, userId: string, message: string) {
   const admin = getAdmin();
-  const { error } = await admin.rpc("add_ticket_comment_for_user", {
-    p_ticket_id:  ticketId,
-    p_creator_id: userId,
-    p_message:    message,
-  });
+  const { error } = await admin
+    .from("ticket_comments")
+    .insert({ ticket_id: ticketId, creator_id: userId, message });
   if (error) throw new Error(error.message);
+}
+
+export async function getTicketComments(ticketId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("ticket_comments")
+    .select("*, profiles (full_name)")
+    .eq("ticket_id", ticketId)
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function getTicketAttachments(ticketId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("ticket_attachments")
+    .select("*")
+    .eq("ticket_id", ticketId);
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function getTicketOrganizationId(ticketId: string): Promise<string> {
+  const admin = getAdmin();
+  const { data, error } = await admin
+    .from("tickets")
+    .select("organization_id")
+    .eq("id", ticketId)
+    .single();
+  if (error) throw new Error(error.message);
+  return data.organization_id;
 }
 
 export async function uploadTicketAttachment(
@@ -139,50 +145,30 @@ export async function uploadTicketAttachment(
   ticketId: string,
   userId: string
 ) {
-  const supabase = await createClient();
-  const fileExt  = file.name.split(".").pop();
-  const fileName = `${ticketId}/${Date.now()}.${fileExt}`;
-
-  const { error: uploadError } = await supabase.storage
-    .from("attachments")
-    .upload(fileName, file);
+  const admin    = getAdmin();
+  const ext      = file.name.split(".").pop();
+  const path     = `${orgId}/${ticketId}/${userId}-${Date.now()}.${ext}`;
+  const buffer   = Buffer.from(await file.arrayBuffer());
+  const { error: uploadError } = await admin.storage
+    .from("ticket-attachments")
+    .upload(path, buffer, { contentType: file.type });
   if (uploadError) throw new Error(uploadError.message);
-
-  const { data: { publicUrl } } = supabase.storage
-    .from("attachments")
-    .getPublicUrl(fileName);
-
-  const admin = getAdmin();
-  const { error: dbError } = await admin.from("attachments").insert([{
-    organization_id: orgId,
-    uploader_id:     userId,
-    context:         "ticket",
-    record_id:       ticketId,
-    file_url:        publicUrl,
-    file_name:       file.name,
-  }]);
-  if (dbError) throw new Error(dbError.message);
-  return publicUrl;
+  const { data: urlData } = admin.storage.from("ticket-attachments").getPublicUrl(path);
+  await admin.from("ticket_attachments").insert({
+    ticket_id: ticketId,
+    file_url:  urlData.publicUrl,
+    file_name: file.name,
+    file_type: file.type,
+    uploaded_by: userId,
+  });
 }
 
-export async function getTicketAttachments(ticketId: string) {
+export async function getOrgMembers(orgId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("attachments")
-    .select("*")
-    .eq("context", "ticket")
-    .eq("record_id", ticketId);
+    .from("organization_members")
+    .select("user_id, role, profiles (full_name)")
+    .eq("organization_id", orgId);
   if (error) throw new Error(error.message);
-  return data;
-}
-
-export async function getTicketOrganizationId(ticketId: string): Promise<string> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("tickets")
-    .select("organization_id")
-    .eq("id", ticketId)
-    .single();
-  if (error) throw new Error(error.message);
-  return data.organization_id;
+  return data ?? [];
 }

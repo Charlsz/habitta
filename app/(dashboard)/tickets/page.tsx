@@ -3,10 +3,11 @@ import { getOrganizations } from "@/modules/organizations/infrastructure/organiz
 import { getAssetsByOrganization } from "@/modules/assets/infrastructure/asset.repository";
 import { getTickets } from "@/modules/tickets/infrastructure/ticket.repository";
 import { TicketPriorityBadge, TicketStatusBadge } from "@/modules/tickets/presentation/ticket-badge";
+import { CategoryBadge } from "@/modules/ticket-categories/presentation/category-badge";
 import Link from "next/link";
 import { TicketStatus, TICKET_STATUS_LABELS } from "@/modules/tickets/domain/ticket.schema";
 
-const STATUS_OPTIONS: { value: string; label: string }[] = [
+const STATUS_OPTIONS = [
   { value: "all",         label: "Todos" },
   { value: "open",        label: "Abierto" },
   { value: "in_review",   label: "En revisi\u00f3n" },
@@ -22,15 +23,15 @@ export default async function TicketsPage({
 }: {
   searchParams: { status?: string; asset?: string; org?: string };
 }) {
-  const user       = await requireAuth();
-  const orgs       = await getOrganizations(user.id);
-  const requestedOrg = searchParams.org;
-  const selectedOrg  = orgs.some((org) => org.id === requestedOrg) ? requestedOrg : orgs[0]?.id;
+  const user      = await requireAuth();
+  const orgs      = await getOrganizations(user.id);
+  const selectedOrg = orgs.some((o) => o.id === searchParams.org)
+    ? searchParams.org
+    : orgs[0]?.id;
 
   const tickets = selectedOrg
     ? await getTickets(selectedOrg, { status: searchParams.status, asset_id: searchParams.asset })
     : [];
-
   const assets = selectedOrg ? await getAssetsByOrganization(selectedOrg) : [];
 
   return (
@@ -81,40 +82,41 @@ export default async function TicketsPage({
           </div>
         ) : (
           <div className="divide-y">
-            {(tickets as any[]).map((t) => {
-              const assigneeName = t.assignee?.full_name ?? null;
-              return (
-                <Link
-                  href={`/tickets/${t.id}`}
-                  key={t.id}
-                  className="flex flex-col sm:flex-row gap-4 p-5 hover:bg-[var(--surface)] transition-colors"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex gap-2 items-center mb-1 flex-wrap">
-                      <TicketStatusBadge status={t.status as TicketStatus} />
-                      <TicketPriorityBadge priority={t.priority} />
-                      {assigneeName ? (
-                        <span className="text-xs text-[#c8935f] font-medium">\ud83d\udc64 {assigneeName}</span>
-                      ) : (
-                        <span className="text-xs text-red-400 font-medium">Sin asignar</span>
-                      )}
-                    </div>
-                    <h3 className="font-semibold text-[var(--foreground)] truncate">{t.title}</h3>
-                    <p className="habitta-muted text-sm line-clamp-1 mt-1">{t.description}</p>
-                    <p className="text-xs habitta-muted mt-1">
-                      Por {t.profiles?.full_name || "Usuario"}
-                    </p>
+            {(tickets as any[]).map((t) => (
+              <Link
+                href={`/tickets/${t.id}`}
+                key={t.id}
+                className="flex flex-col sm:flex-row gap-4 p-5 hover:bg-[var(--surface)] transition-colors"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex gap-2 items-center mb-1 flex-wrap">
+                    <TicketStatusBadge   status={t.status as TicketStatus} />
+                    <TicketPriorityBadge priority={t.priority} />
+                    {t.ticket_categories && (
+                      <CategoryBadge
+                        name={t.ticket_categories.name}
+                        color={t.ticket_categories.color}
+                      />
+                    )}
+                    {t.assignee?.full_name ? (
+                      <span className="text-xs text-[#c8935f] font-medium">\ud83d\udc64 {t.assignee.full_name}</span>
+                    ) : (
+                      <span className="text-xs text-red-400 font-medium">Sin asignar</span>
+                    )}
                   </div>
-                  {t.assets && (
-                    <div className="sm:text-right flex sm:flex-col items-center sm:items-end justify-center gap-2 shrink-0">
-                      <span className="text-xs font-semibold px-2 py-1 bg-[var(--surface)] rounded text-[var(--muted)]">
-                        \ud83d\udccd {t.assets.name}
-                      </span>
-                    </div>
-                  )}
-                </Link>
-              );
-            })}
+                  <h3 className="font-semibold text-[var(--foreground)] truncate">{t.title}</h3>
+                  <p className="habitta-muted text-sm line-clamp-1 mt-1">{t.description}</p>
+                  <p className="text-xs habitta-muted mt-1">Por {t.profiles?.full_name || "Usuario"}</p>
+                </div>
+                {t.assets && (
+                  <div className="sm:text-right flex sm:flex-col items-center sm:items-end justify-center gap-2 shrink-0">
+                    <span className="text-xs font-semibold px-2 py-1 bg-[var(--surface)] rounded text-[var(--muted)]">
+                      \ud83d\udccd {t.assets.name}
+                    </span>
+                  </div>
+                )}
+              </Link>
+            ))}
           </div>
         )}
       </div>
