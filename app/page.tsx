@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import {
   Ticket, Calendar, Building, LayoutDashboard,
-  Users, Paperclip, Menu, X, ArrowRight
+  Users, Paperclip, Menu, X
 } from "lucide-react";
 
 // ─── DATA ────────────────────────────────────────────────────────────────────
@@ -151,27 +151,6 @@ export default function LandingPage() {
               >
                 Ingresar
               </Link>
-              <Link
-                href="/register"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: "#d4a373",
-                  color: "#ffffff",
-                  fontSize: "0.875rem",
-                  fontWeight: 600,
-                  padding: "0.5rem 1.25rem",
-                  borderRadius: "8px",
-                  textDecoration: "none",
-                  transition: "background-color 150ms",
-                  border: "none",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#C4915F")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#d4a373")}
-              >
-                Empezar gratis
-              </Link>
             </div>
 
             {/* Mobile toggle */}
@@ -231,22 +210,6 @@ export default function LandingPage() {
                 }}
               >
                 Ingresar
-              </Link>
-              <Link
-                href="/register"
-                onClick={() => setMenuOpen(false)}
-                style={{
-                  display: "block",
-                  textAlign: "center",
-                  padding: "0.625rem",
-                  backgroundColor: "#d4a373",
-                  borderRadius: "8px",
-                  color: "#ffffff",
-                  fontWeight: 600,
-                  textDecoration: "none",
-                }}
-              >
-                Empezar gratis
               </Link>
             </div>
           </div>
@@ -317,7 +280,7 @@ export default function LandingPage() {
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link
-                href="/register"
+                href="/dashboard"
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -334,15 +297,14 @@ export default function LandingPage() {
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#C4915F")}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#d4a373")}
               >
-                Empezar gratis hoy
+                Ir a la app
               </Link>
               <Link
-                href="/login"
+                href="/register"
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: "0.375rem",
                   backgroundColor: "#faedcd",
                   color: "#2C2416",
                   fontWeight: 500,
@@ -356,7 +318,7 @@ export default function LandingPage() {
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#e9edc9")}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#faedcd")}
               >
-                Ver demo <ArrowRight size={15} />
+                Empezar gratis
               </Link>
             </div>
           </div>

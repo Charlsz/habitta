@@ -84,6 +84,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+h1,
+h2 {
+  color: var(--foreground);
+  font-family: var(--font-playfair), serif;
+  letter-spacing: 0;
+}
+
 ::selection {
   background-color: var(--color-caramel);
   color: #ffffff;
@@ -93,3 +100,128 @@ body {
 ::-webkit-scrollbar-track  { background: var(--background); }
 ::-webkit-scrollbar-thumb  { background: var(--border); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+.habitta-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-card);
+}
+
+.habitta-card-high {
+  background: var(--surface-high);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-card);
+}
+
+.habitta-title {
+  color: var(--foreground);
+  font-family: var(--font-playfair), serif;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.habitta-muted {
+  color: var(--muted);
+}
+
+.habitta-link {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.habitta-link:hover {
+  color: var(--accent-hover);
+}
+
+.habitta-input {
+  background: var(--surface-high);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--foreground);
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.habitta-input:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px #d4a37333;
+  outline: none;
+}
+
+.habitta-primary {
+  background: var(--accent);
+  border-radius: 8px;
+  color: var(--accent-fg);
+  font-weight: 600;
+  transition: background-color 150ms ease, transform 150ms ease;
+}
+
+.habitta-primary:hover {
+  background: var(--accent-hover);
+}
+
+.habitta-secondary {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--foreground);
+  font-weight: 600;
+  transition: background-color 150ms ease;
+}
+
+.habitta-secondary:hover {
+  background: var(--color-lima);
+}
+
+/* Legacy Tailwind color classes mapped to the Habitta visual language. */
+.bg-white { background-color: var(--surface-high) !important; }
+.bg-gray-50,
+.bg-zinc-50 { background-color: var(--surface) !important; }
+.bg-gray-100,
+.bg-gray-200,
+.bg-zinc-100 { background-color: var(--color-lima) !important; }
+.bg-blue-50,
+.bg-blue-100,
+.bg-indigo-600,
+.bg-blue-600,
+.bg-blue-700 { background-color: var(--accent) !important; }
+.bg-gray-900 { background-color: var(--foreground) !important; }
+.bg-gray-800 { background-color: #3a3020 !important; }
+.hover\:bg-blue-700:hover,
+.hover\:bg-indigo-700:hover { background-color: var(--accent-hover) !important; }
+.hover\:bg-gray-50:hover,
+.hover\:bg-zinc-50:hover,
+.hover\:bg-gray-100:hover,
+.hover\:bg-gray-200:hover,
+.hover\:bg-gray-300:hover { background-color: var(--color-lima) !important; }
+
+.text-gray-900,
+.text-zinc-900,
+.text-gray-800,
+.text-zinc-700,
+.text-blue-800,
+.text-gray-700 { color: var(--foreground) !important; }
+.text-gray-600,
+.text-gray-500,
+.text-zinc-500,
+.text-gray-400 { color: var(--muted) !important; }
+.text-blue-600,
+.text-blue-700,
+.text-indigo-600,
+.text-indigo-700,
+.text-blue-500 { color: var(--accent) !important; }
+.hover\:text-indigo-700:hover,
+.hover\:text-blue-700:hover { color: var(--accent-hover) !important; }
+
+.border-gray-300,
+.border-zinc-200,
+.border-zinc-100 { border-color: var(--border) !important; }
+.hover\:border-blue-500:hover { border-color: var(--accent) !important; }
+.focus\:border-indigo-500:focus,
+.focus\:ring-blue-500:focus,
+.focus\:ring-indigo-500\/20:focus {
+  border-color: var(--border-focus) !important;
+  box-shadow: 0 0 0 3px #d4a37333 !important;
+}

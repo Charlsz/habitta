@@ -28,12 +28,12 @@ export function LoginForm() {
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 w-full max-w-sm">
       <div className="space-y-2">
-        <label className="text-sm font-medium text-gray-700">Email</label>
+        <label className="text-sm font-medium text-[var(--foreground)]">Email</label>
         <input
           {...form.register("email")}
           type="email"
           placeholder="tu@email.com"
-          className="w-full px-3 py-2 border rounded-md outline-none focus:ring-2 focus:ring-blue-500"
+          className="habitta-input w-full px-3 py-2"
           disabled={isPending}
         />
         {form.formState.errors.email && (
@@ -42,12 +42,12 @@ export function LoginForm() {
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium text-gray-700">Contraseña</label>
+        <label className="text-sm font-medium text-[var(--foreground)]">Contraseña</label>
         <input
           {...form.register("password")}
           type="password"
           placeholder="••••••••"
-          className="w-full px-3 py-2 border rounded-md outline-none focus:ring-2 focus:ring-blue-500"
+          className="habitta-input w-full px-3 py-2"
           disabled={isPending}
         />
         {form.formState.errors.password && (
@@ -64,7 +64,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={isPending}
-        className="w-full py-2 px-4 text-white bg-blue-600 hover:bg-blue-700 rounded-md font-medium disabled:opacity-50 transition-colors"
+        className="habitta-primary w-full py-2 px-4 disabled:opacity-50"
       >
         {isPending ? "Ingresando..." : "Ingresar"}
       </button>

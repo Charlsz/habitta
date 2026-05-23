@@ -72,9 +72,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         {/* Header */}
         <header
           className={[
-            "h-16 shrink-0 bg-[var(--surface-high)] border-b border-[var(--border)]",
+            "h-16 shrink-0 bg-[var(--background)] border-b border-[var(--border)]",
             "flex items-center px-8 justify-end gap-4",
-            "shadow-[var(--shadow-card)]",
           ].join(" ")}
         >
           <span className="text-sm font-medium text-[var(--muted)]">Perfil</span>

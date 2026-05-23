@@ -83,13 +83,13 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#FAFAF8] p-4 font-sans">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-zinc-100 p-8">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--background)] p-4 font-sans">
+      <div className="habitta-card w-full max-w-md p-8">
         <div className="text-center mb-8">
           <Link href="/" className="inline-block transition-transform hover:scale-105 active:scale-95">
-            <h1 className="text-3xl font-extrabold text-indigo-700 tracking-tight">Habitta</h1>
+            <h1 className="habitta-title text-3xl">Habitta</h1>
           </Link>
-          <p className="text-zinc-500 mt-2 font-medium">Crea tu cuenta gratis</p>
+          <p className="habitta-muted mt-2 font-medium">Crea tu cuenta gratis</p>
         </div>
 
         {error && (
@@ -100,49 +100,49 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-zinc-700">Nombre completo</label>
+            <label className="text-sm font-semibold text-[var(--foreground)]">Nombre completo</label>
             <input
               {...register("fullName")}
               type="text"
               placeholder="Juan Pérez"
               disabled={isSubmitting}
-              className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors bg-zinc-50 focus:bg-white text-zinc-900"
+              className="habitta-input w-full px-4 py-3"
             />
             {errors.fullName && <p className="text-red-500 text-xs mt-1">{errors.fullName.message}</p>}
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-zinc-700">Correo Electrónico</label>
+            <label className="text-sm font-semibold text-[var(--foreground)]">Correo Electrónico</label>
             <input
               {...register("email")}
               type="email"
               placeholder="juan@ejemplo.com"
               disabled={isSubmitting}
-              className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors bg-zinc-50 focus:bg-white text-zinc-900"
+              className="habitta-input w-full px-4 py-3"
             />
             {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-zinc-700">Contraseña</label>
+            <label className="text-sm font-semibold text-[var(--foreground)]">Contraseña</label>
             <input
               {...register("password")}
               type="password"
               placeholder="••••••••"
               disabled={isSubmitting}
-              className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors bg-zinc-50 focus:bg-white text-zinc-900"
+              className="habitta-input w-full px-4 py-3"
             />
             {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-zinc-700">Confirmar contraseña</label>
+            <label className="text-sm font-semibold text-[var(--foreground)]">Confirmar contraseña</label>
             <input
               {...register("confirmPassword")}
               type="password"
               placeholder="••••••••"
               disabled={isSubmitting}
-              className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors bg-zinc-50 focus:bg-white text-zinc-900"
+              className="habitta-input w-full px-4 py-3"
             />
             {errors.confirmPassword && (
               <p className="text-red-500 text-xs mt-1">{errors.confirmPassword.message}</p>
@@ -152,7 +152,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3.5 px-4 rounded-xl transition-all shadow-sm shadow-indigo-200 flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed mt-2"
+            className="habitta-primary w-full py-3.5 px-4 flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed mt-2"
           >
             {isSubmitting ? (
               <>
@@ -166,9 +166,9 @@ export default function RegisterPage() {
         </form>
 
         <div className="mt-8 text-center">
-          <p className="text-zinc-500 text-sm">
+          <p className="habitta-muted text-sm">
             ¿Ya tienes cuenta?{" "}
-            <Link href="/login" className="text-indigo-600 font-semibold hover:text-indigo-700 hover:underline transition-colors">
+            <Link href="/login" className="habitta-link">
               Ingresar
             </Link>
           </p>
