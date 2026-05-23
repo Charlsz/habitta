@@ -27,10 +27,16 @@ const RELATION_OPTIONS: { value: RelationType; label: string }[] = [
   { value: "resident",    label: "Residente" },
 ];
 
-export default async function AssetDetailPage({ params }: { params: { id: string } }) {
+export default async function AssetDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+
   let asset;
   try {
-    asset = await getAssetById(params.id);
+    asset = await getAssetById(id);
   } catch {
     notFound();
   }
@@ -39,7 +45,7 @@ export default async function AssetDetailPage({ params }: { params: { id: string
   const isAdmin   = role === "owner" || role === "admin";
 
   const [relations, members] = await Promise.all([
-    getRelationsByAsset(params.id),
+    getRelationsByAsset(id),
     isAdmin ? getOrgMembers(asset.organization_id) : Promise.resolve([]),
   ]);
 
@@ -47,17 +53,16 @@ export default async function AssetDetailPage({ params }: { params: { id: string
   const typeLabel = ASSET_TYPE_LABELS[typeKey];
   const typeColor = ASSET_TYPE_COLORS[typeKey];
 
-  // IDs ya asignados para excluirlos del selector
-  const assignedUserIds = new Set(relations.map((r) => r.user_id));
+  const assignedUserIds  = new Set(relations.map((r) => r.user_id));
   const availableMembers = members.filter((m) => !assignedUserIds.has(m.user_id));
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <Link href="/assets" className="habitta-link text-sm inline-block">
-        ← Volver a activos
+        ← Volver a unidades
       </Link>
 
-      {/* ---- Header del activo ---- */}
+      {/* ---- Header de la unidad ---- */}
       <div className="habitta-card p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-1">
@@ -77,7 +82,7 @@ export default async function AssetDetailPage({ params }: { params: { id: string
                 {asset.status === "active"
                   ? "Activo"
                   : asset.status === "maintenance"
-                  ? "Mantenimiento"
+                  ? "En mantenimiento"
                   : "Inactivo"}
               </span>
             </div>
@@ -112,14 +117,13 @@ export default async function AssetDetailPage({ params }: { params: { id: string
         </div>
 
         {relations.length === 0 ? (
-          <p className="p-5 text-sm habitta-muted italic">No hay personas asignadas a este activo.</p>
+          <p className="p-5 text-sm habitta-muted italic">No hay personas asignadas a esta unidad.</p>
         ) : (
           <ul className="divide-y divide-[var(--border)]">
             {relations.map((r) => {
               const rt = r.relation_type as RelationType;
               return (
                 <li key={r.id} className="flex items-center gap-4 px-5 py-3">
-                  {/* Avatar */}
                   <div className="w-9 h-9 rounded-full bg-[#d4a373]/20 flex items-center justify-center text-[#d4a373] font-bold text-sm shrink-0">
                     {(r.profiles?.full_name ?? "?").charAt(0).toUpperCase()}
                   </div>
@@ -136,7 +140,6 @@ export default async function AssetDetailPage({ params }: { params: { id: string
                     </span>
                   </div>
 
-                  {/* Botón eliminar (solo admin) */}
                   {isAdmin && (
                     <form
                       action={async (fd: FormData) => {
@@ -166,12 +169,12 @@ export default async function AssetDetailPage({ params }: { params: { id: string
       {isAdmin && (
         <div className="habitta-card p-5 space-y-4">
           <h3 className="font-semibold text-sm uppercase tracking-wide text-[var(--foreground)]">
-            ➕ Asignar persona a este activo
+            ➕ Asignar persona a esta unidad
           </h3>
 
           {availableMembers.length === 0 ? (
             <p className="text-sm habitta-muted italic">
-              Todos los miembros de la organización ya están asignados a este activo.
+              Todos los miembros de la organización ya están asignados a esta unidad.
             </p>
           ) : (
             <form
