@@ -4,7 +4,7 @@ import {
   getTicketAttachments 
 } from "@/modules/tickets/infrastructure/ticket.repository";
 import { TicketPriorityBadge, TicketStatusBadge } from "@/modules/tickets/presentation/ticket-badge";
-import { changeTicketStatusAction, addTicketResponseAction } from "@/modules/tickets/application/ticket.actions";
+import { changeTicketStatusAction, addTicketCommentAction } from "@/modules/tickets/application/ticket.actions";
 import Link from "next/link";
 import { TicketStatus } from "@/modules/tickets/domain/ticket.schema";
 
@@ -102,7 +102,7 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
         </div>
 
         {/* Input de respuesta administrativa */}
-        <form action={addTicketResponseAction} className="mt-6 bg-white p-4 rounded-xl border shadow-sm flex flex-col items-end">
+        <form action={addTicketCommentAction} className="mt-6 bg-white p-4 rounded-xl border shadow-sm flex flex-col items-end">
            <input type="hidden" name="ticket_id" value={ticket.id} />
            <textarea 
              name="message" 

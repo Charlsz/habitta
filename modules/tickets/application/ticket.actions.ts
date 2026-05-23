@@ -10,14 +10,16 @@ export async function createTicketAction(formData: FormData) {
   try {
     const user = await requireAuth();
     
-    // Extraer campos del formData
-    const orgId = formData.get("organization_id") as string;
+    // Simplificación de extracción de FormData
+    const rawData = Object.fromEntries(formData.entries());
+    const orgId = String(rawData.organization_id);
+
     const data = {
       organization_id: orgId,
-      asset_id: (formData.get("asset_id") as string) || undefined,
-      title: formData.get("title") as string,
-      description: formData.get("description") as string,
-      priority: formData.get("priority") as string,
+      asset_id: rawData.asset_id ? String(rawData.asset_id) : undefined,
+      title: String(rawData.title),
+      description: String(rawData.description),
+      priority: String(rawData.priority),
     };
 
     // Validar Zod
@@ -55,7 +57,7 @@ export async function changeTicketStatusAction(ticketId: string, status: TicketS
   }
 }
 
-export async function addTicketResponseAction(formData: FormData) {
+export async function addTicketCommentAction(formData: FormData) {
   try {
     const user = await requireAuth();
     const ticketId = formData.get("ticket_id") as string;
