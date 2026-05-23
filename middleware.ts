@@ -6,7 +6,6 @@ export async function middleware(request: NextRequest) {
     request,
   })
 
-  // 1. Refrescar la sesión de Supabase
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -30,29 +29,35 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const isAuthRoute = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/register')
-  const isPublicRoute = request.nextUrl.pathname === '/' || isAuthRoute
+  const pathname = request.nextUrl.pathname
+  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register')
+  const isLanding = pathname === '/'
+  const isPublicRoute = isLanding || isAuthRoute
 
-  // 2. Proteger rutas: Si no hay usuario y no está en ruta pública, patearlo a /login
+  // Sin sesion en ruta protegida -> login
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  // 3. Redirigir a usuarios logueados que intenten ir al login o register
+  // Con sesion en login/register -> dashboard
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
 
-  // La raíz ('/') se permite para usuarios sin sesión y con sesión (podrían navegarla y luego ir al dashboard)
+  // Con sesion en la landing -> dashboard (evita ver CTA de "Ingresar" estando logueado)
+  if (user && isLanding) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/dashboard'
+    return NextResponse.redirect(url)
+  }
 
   return supabaseResponse
 }
 
-// Applicamos el middleware a todo excepto archivos estáticos
 export const config = {
   matcher: [
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
