@@ -2,6 +2,7 @@ import { requireOrgRole } from "@/modules/auth/application/auth.guard";
 import { getOrganizationById } from "@/modules/organizations/infrastructure/organization.repository";
 import { getAssetsByOrganization } from "@/modules/assets/infrastructure/asset.repository";
 import { AssetForm } from "@/modules/assets/presentation/asset-form";
+import { TelegramLinkButton } from "@/modules/telegram/presentation/telegram-link-button";
 import Link from "next/link";
 
 const ORG_TYPE_LABELS: Record<string, string> = {
@@ -39,6 +40,9 @@ export default async function OrganizationDetailPage({
           {ORG_TYPE_LABELS[org.type] ?? org.type}
         </p>
       </div>
+
+      {/* Sección Telegram */}
+      <TelegramLinkButton organizationId={org.id} organizationName={org.name} />
 
       <div className="grid md:grid-cols-3 gap-8 items-start">
         {/* Listado de Unidades */}
