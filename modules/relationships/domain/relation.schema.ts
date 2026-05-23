@@ -15,10 +15,10 @@ export const RELATION_TYPE_COLORS: Record<RelationType, string> = {
 };
 
 export const RELATION_TYPE_ICONS: Record<RelationType, string> = {
-  owner:       "\ud83c\udfe0",
-  tenant:      "\ud83d\udd11",
-  responsible: "\ud83d\udee1\ufe0f",
-  resident:    "\ud83d\udc64",
+  owner:       "🏠",
+  tenant:      "🔑",
+  responsible: "🛡️",
+  resident:    "👤",
 };
 
 export interface UserAssetRelation {

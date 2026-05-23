@@ -41,7 +41,7 @@ export function TicketForm({ organizations, assets, categoriesByOrg }: FormProps
       {/* Organización y Activo */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className={labelClass}>Organizaci\u00f3n</label>
+          <label className={labelClass}>Organización</label>
           <select
             name="organization_id"
             value={selectedOrg}
@@ -57,7 +57,7 @@ export function TicketForm({ organizations, assets, categoriesByOrg }: FormProps
         <div>
           <label className={labelClass}>Activo <span className="text-xs habitta-muted">(opcional)</span></label>
           <select name="asset_id" className={inputClass}>
-            <option value="">General \u2014 sin activo espec\u00edfico</option>
+            <option value="">General — sin activo específico</option>
             {filteredAssets.map((ast) => (
               <option key={ast.id} value={ast.id}>{ast.name}</option>
             ))}
@@ -67,9 +67,9 @@ export function TicketForm({ organizations, assets, categoriesByOrg }: FormProps
 
       {/* Categoría */}
       <div>
-        <label className={labelClass}>Categor\u00eda</label>
+        <label className={labelClass}>Categoría</label>
         {filteredCategories.length === 0 ? (
-          <p className="text-xs habitta-muted mt-1 italic">No hay categor\u00edas configuradas para esta organizaci\u00f3n.</p>
+          <p className="text-xs habitta-muted mt-1 italic">No hay categorías configuradas para esta organización.</p>
         ) : (
           <select name="category_id" className={inputClass} required>
             {filteredCategories.map((cat) => (
@@ -81,7 +81,7 @@ export function TicketForm({ organizations, assets, categoriesByOrg }: FormProps
 
       {/* Título */}
       <div>
-        <label className={labelClass}>T\u00edtulo de la incidencia</label>
+        <label className={labelClass}>Título de la incidencia</label>
         <input
           name="title"
           placeholder="Ej: Fuga de agua en el piso 2"
@@ -93,7 +93,7 @@ export function TicketForm({ organizations, assets, categoriesByOrg }: FormProps
 
       {/* Descripción */}
       <div>
-        <label className={labelClass}>Descripci\u00f3n detallada</label>
+        <label className={labelClass}>Descripción detallada</label>
         <textarea
           name="description"
           rows={4}
@@ -116,7 +116,7 @@ export function TicketForm({ organizations, assets, categoriesByOrg }: FormProps
         </div>
         <div>
           <label className={labelClass}>
-            Fecha l\u00edmite
+            Fecha límite
             <span className="ml-1 text-xs habitta-muted">(opcional)</span>
           </label>
           <input

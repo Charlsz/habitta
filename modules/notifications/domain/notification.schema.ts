@@ -12,10 +12,10 @@ export interface Notification {
 }
 
 export const NOTIFICATION_ICON: Record<NotificationType, string> = {
-  info:    "\u2139\ufe0f",
-  warning: "\u26a0\ufe0f",
-  success: "\u2705",
-  error:   "\u274c",
+  info:    "ℹ️",
+  warning: "⚠️",
+  success: "✅",
+  error:   "❌",
 };
 
 export const NOTIFICATION_COLOR: Record<NotificationType, string> = {

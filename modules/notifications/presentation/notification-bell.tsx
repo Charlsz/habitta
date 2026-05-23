@@ -35,7 +35,7 @@ export function NotificationBell({ unreadCount, notifications }: Props) {
 
   return (
     <div ref={ref} className="relative">
-      {/* Bot\u00f3n campana */}
+      {/* Botón campana */}
       <button
         onClick={() => setOpen((v) => !v)}
         className="relative p-2 rounded-full hover:bg-[rgba(0,0,0,0.05)] transition-colors"
@@ -68,7 +68,7 @@ export function NotificationBell({ unreadCount, notifications }: Props) {
                 disabled={isPending}
                 className="text-xs text-[#c8935f] hover:underline font-medium disabled:opacity-50"
               >
-                {isPending ? "Marcando..." : "Marcar le\u00eddas"}
+                {isPending ? "Marcando..." : "Marcar leídas"}
               </button>
             )}
           </div>
@@ -77,7 +77,7 @@ export function NotificationBell({ unreadCount, notifications }: Props) {
           <ul className="max-h-72 overflow-y-auto divide-y divide-[var(--border)]">
             {notifications.length === 0 ? (
               <li className="px-4 py-6 text-center text-sm text-[var(--muted)]">
-                No tienes notificaciones pendientes \ud83c\udf89
+                No tienes notificaciones pendientes 🎉
               </li>
             ) : (
               notifications.map((n) => (

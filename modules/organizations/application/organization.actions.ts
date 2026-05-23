@@ -23,7 +23,7 @@ export async function createOrganizationAction(data: OrganizationInsert) {
     createNotification(
       org.id,
       user.id,
-      "\ud83c\udfe2 Organización creada",
+      "🏢 Organización creada",
       `"${org.name}" ha sido creada exitosamente.`,
       "success"
     ).catch(() => {});

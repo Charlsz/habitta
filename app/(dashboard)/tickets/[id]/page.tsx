@@ -45,7 +45,7 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <Link href="/tickets" className="habitta-link text-sm mb-2 inline-block">
-        \u2190 Volver a tickets
+        ← Volver a tickets
       </Link>
 
       {/* -------- Header -------- */}
@@ -57,7 +57,7 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
               <TicketPriorityBadge priority={ticket.priority as any} />
               {assigneeName ? (
                 <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-[#d4a373]/15 text-[#c8935f]">
-                  \ud83d\udc64 {assigneeName}
+                  👤 {assigneeName}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-red-50 text-red-400">
@@ -71,7 +71,7 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
               <span className="font-semibold">
                 {(ticket as any).profiles?.full_name || "Desconocido"}
               </span>{" "}
-              \u2022 #{ticket.id.split("-")[0]}
+              • #{ticket.id.split("-")[0]}
             </p>
           </div>
 
@@ -115,7 +115,7 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
           )}
           {ticket.due_date && (
             <div>
-              <p className="text-xs font-semibold habitta-muted uppercase tracking-wide">Fecha L\u00edmite</p>
+              <p className="text-xs font-semibold habitta-muted uppercase tracking-wide">Fecha Límite</p>
               <p className="text-sm font-medium mt-1">{formatDate(ticket.due_date)}</p>
             </div>
           )}
@@ -137,7 +137,7 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
                     rel="noopener noreferrer"
                     className="habitta-link text-sm"
                   >
-                    \ud83d\udcce {att.file_name}
+                    📎 {att.file_name}
                   </a>
                 ))}
               </div>
@@ -150,7 +150,7 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
       {isAdmin && (
         <div className="habitta-card p-5">
           <h3 className="font-semibold text-sm text-[var(--foreground)] uppercase tracking-wide mb-3">
-            \ud83d\udc65 Responsable asignado
+            👥 Responsable asignado
           </h3>
           <form
             action={async (formData: FormData) => {
@@ -165,7 +165,7 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
               defaultValue={ticket.assigned_to ?? ""}
               className="flex-1 text-sm border border-[var(--border)] rounded-md px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-[#d4a373]"
             >
-              <option value="">\u2014 Sin asignar</option>
+              <option value="">— Sin asignar</option>
               {members.map((m) => (
                 <option key={m.user_id} value={m.user_id}>
                   {m.profiles?.full_name ?? m.user_id} ({m.role})
@@ -185,13 +185,13 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
       {/* -------- Respuesta Administrativa -------- */}
       {ticket.response ? (
         <div className="rounded-xl border border-[#d4a373]/40 bg-[#d4a373]/8 p-5 space-y-2">
-          <p className="text-xs font-bold uppercase tracking-widest text-[#c8935f]">\ud83d\udcec Respuesta del administrador</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-[#c8935f]">📬 Respuesta del administrador</p>
           <p className="text-sm text-[var(--foreground)] whitespace-pre-wrap">{ticket.response}</p>
         </div>
       ) : (
         isAdmin && (
           <div className="rounded-xl border border-dashed border-[var(--border)] p-4">
-            <p className="text-xs habitta-muted italic">A\u00fan no hay respuesta administrativa para este ticket.</p>
+            <p className="text-xs habitta-muted italic">Aún no hay respuesta administrativa para este ticket.</p>
           </div>
         )
       )}
@@ -199,7 +199,7 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
       {isAdmin && (
         <div className="habitta-card p-5 space-y-3">
           <h3 className="font-semibold text-sm text-[var(--foreground)] uppercase tracking-wide">
-            {ticket.response ? "\u270f\ufe0f Editar respuesta administrativa" : "\u2709\ufe0f Agregar respuesta administrativa"}
+            {ticket.response ? "✏️ Editar respuesta administrativa" : "✉️ Agregar respuesta administrativa"}
           </h3>
           <form
             action={async (formData: FormData) => {
@@ -231,7 +231,7 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
         <h3 className="font-bold text-lg habitta-title">Actualizaciones</h3>
         <div className="space-y-4">
           {comments.length === 0 ? (
-            <p className="text-sm habitta-muted italic">No hay actualizaciones a\u00fan. S\u00e9 el primero en responder.</p>
+            <p className="text-sm habitta-muted italic">No hay actualizaciones aún. Sé el primero en responder.</p>
           ) : (
             comments.map((c) => (
               <div key={c.id} className="habitta-card p-4 flex gap-3">
@@ -258,7 +258,7 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
             name="message"
             required
             rows={3}
-            placeholder="Escribe una actualizaci\u00f3n o respuesta..."
+            placeholder="Escribe una actualización o respuesta..."
             className="w-full text-sm border border-[var(--border)] p-3 rounded-md outline-none focus:ring-2 focus:ring-[#d4a373] bg-white resize-none"
           />
           <button

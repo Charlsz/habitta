@@ -17,7 +17,7 @@ export const ASSET_TYPE_LABELS: Record<z.infer<typeof AssetTypeEnum>, string> = 
   apartment:   "Apartamento",
   house:       "Casa",
   parking:     "Parqueadero",
-  common_area: "Zona com\u00fan",
+  common_area: "Zona común",
   office:      "Oficina",
   warehouse:   "Bodega",
   land:        "Lote",

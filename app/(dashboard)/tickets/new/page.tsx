@@ -27,15 +27,15 @@ export default async function NewTicketPage() {
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
         <Link href="/tickets" className="text-blue-600 text-sm mb-4 inline-block hover:underline">
-          \u2190 Volver a tickets
+          ← Volver a tickets
         </Link>
         <h1 className="text-3xl font-bold tracking-tight">Nuevo Ticket</h1>
-        <p className="text-gray-500 mt-2">Especifica los detalles de la incidencia t\u00e9cnica o administrativa.</p>
+        <p className="text-gray-500 mt-2">Especifica los detalles de la incidencia técnica o administrativa.</p>
       </div>
 
       {orgs.length === 0 ? (
         <div className="p-6 text-center border bg-orange-50 text-orange-800 rounded-lg">
-          Debes crear o pertenecer a una <strong>Organizaci\u00f3n</strong> primero para poder levantar un ticket.
+          Debes crear o pertenecer a una <strong>Organización</strong> primero para poder levantar un ticket.
         </div>
       ) : (
         <TicketForm

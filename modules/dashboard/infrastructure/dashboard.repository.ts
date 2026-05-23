@@ -45,7 +45,7 @@ export async function getDashboardMetrics(organizationId: string) {
       .eq("organization_id", organizationId)
       .order("created_at", { ascending: false })
       .limit(5),
-    // Top 5 activos con m\u00e1s tickets
+    // Top 5 activos con más tickets
     supabase.rpc("get_top_assets_by_tickets", {
       p_organization_id: organizationId,
       p_limit: 5,

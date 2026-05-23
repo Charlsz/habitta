@@ -48,7 +48,7 @@ export async function getPrimaryResponsible(
   return { full_name: p.full_name, relation_type: data.relation_type as RelationType };
 }
 
-/** Upsert relaci\u00f3n usuario\u2194activo v\u00eda RPC SECURITY DEFINER */
+/** Upsert relación usuario↔activo vía RPC SECURITY DEFINER */
 export async function upsertRelation(
   organizationId: string,
   assetId:        string,
@@ -67,7 +67,7 @@ export async function upsertRelation(
   if (error) throw new Error(error.message);
 }
 
-/** Eliminar relaci\u00f3n */
+/** Eliminar relación */
 export async function removeRelation(assetId: string, userId: string): Promise<void> {
   const admin = getAdmin();
   const { error } = await admin.rpc("remove_user_asset_relation", {

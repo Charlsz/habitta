@@ -14,7 +14,7 @@ export const TicketPriorityEnum = z.enum(["low", "medium", "high", "urgent"]);
 
 export const TICKET_STATUS_LABELS: Record<z.infer<typeof TicketStatusEnum>, string> = {
   open:        "Abierto",
-  in_review:   "En revisi\u00f3n",
+  in_review:   "En revisión",
   in_progress: "En proceso",
   on_hold:     "En espera",
   resolved:    "Resuelto",
@@ -35,8 +35,8 @@ export const TICKET_STATUS_COLORS: Record<z.infer<typeof TicketStatusEnum>, stri
 export const ticketSchema = z.object({
   organization_id: z.string().uuid(),
   asset_id:        z.string().uuid().optional().nullable(),
-  title:           z.string().min(3, "El t\u00edtulo es muy corto"),
-  description:     z.string().min(5, "Debes agregar una descripci\u00f3n"),
+  title:           z.string().min(3, "El título es muy corto"),
+  description:     z.string().min(5, "Debes agregar una descripción"),
   priority:        TicketPriorityEnum.default("medium"),
   due_date:        z.string().optional().nullable(),
 });

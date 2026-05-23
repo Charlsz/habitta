@@ -5,44 +5,44 @@ const ACTION_META: Record<
   { icon: string; label: (log: AuditLog) => string; color: string }
 > = {
   created: {
-    icon: "\u2728",
+    icon: "✨",
     color: "bg-green-100 text-green-700",
     label: () => "Ticket creado",
   },
   updated: {
-    icon: "\u270f\ufe0f",
+    icon: "✏️",
     color: "bg-blue-100 text-blue-700",
     label: () => "Ticket actualizado",
   },
   status_changed: {
-    icon: "\ud83d\udd04",
+    icon: "🔄",
     color: "bg-yellow-100 text-yellow-700",
     label: (log) => {
       const from = STATUS_ES[(log.old_value?.status as string) ?? ""] ?? log.old_value?.status;
       const to   = STATUS_ES[(log.new_value?.status as string) ?? ""] ?? log.new_value?.status;
-      if (from && to)  return `Estado cambiado: ${from} \u2192 ${to}`;
+      if (from && to)  return `Estado cambiado: ${from} → ${to}`;
       if (to)          return `Estado cambiado a: ${to}`;
       return "Estado actualizado";
     },
   },
   assigned: {
-    icon: "\ud83d\udc64",
+    icon: "👤",
     color: "bg-purple-100 text-purple-700",
     label: (log) =>
       log.new_value?.assigned_to ? "Responsable asignado" : "Responsable removido",
   },
   commented: {
-    icon: "\ud83d\udcac",
+    icon: "💬",
     color: "bg-[#d4a373]/15 text-[#c8935f]",
     label: () => "Comentario agregado",
   },
   responded: {
-    icon: "\ud83d\udcec",
+    icon: "📬",
     color: "bg-indigo-100 text-indigo-700",
     label: () => "Respuesta administrativa guardada",
   },
   deleted: {
-    icon: "\ud83d\uddd1\ufe0f",
+    icon: "🗑️",
     color: "bg-red-100 text-red-700",
     label: () => "Eliminado",
   },
@@ -50,7 +50,7 @@ const ACTION_META: Record<
 
 const STATUS_ES: Record<string, string> = {
   open:        "Abierto",
-  in_review:   "En revisi\u00f3n",
+  in_review:   "En revisión",
   in_progress: "En progreso",
   on_hold:     "En espera",
   resolved:    "Resuelto",
@@ -66,7 +66,7 @@ function relativeTime(iso: string): string {
   if (mins  <  1) return "justo ahora";
   if (mins  <  60) return `hace ${mins} minuto${mins  !== 1 ? "s" : ""}`;
   if (hours <  24) return `hace ${hours} hora${hours !== 1 ? "s" : ""}`;
-  if (days  <  30) return `hace ${days} d\u00eda${days  !== 1 ? "s" : ""}`;
+  if (days  <  30) return `hace ${days} día${days  !== 1 ? "s" : ""}`;
   return new Date(iso).toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" });
 }
 
@@ -121,7 +121,7 @@ export function AuditHistory({ logs }: Props) {
                       <span className="text-xs px-2 py-0.5 rounded-full bg-red-50 text-red-500">
                         {STATUS_ES[oldStatus] ?? oldStatus}
                       </span>
-                      <span className="text-xs text-[var(--muted)]">\u2192</span>
+                      <span className="text-xs text-[var(--muted)]">→</span>
                       <span className="text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-600">
                         {STATUS_ES[newStatus] ?? newStatus}
                       </span>
@@ -130,7 +130,7 @@ export function AuditHistory({ logs }: Props) {
 
                   {showPreview && (
                     <p className="mt-2 text-xs text-[var(--muted)] italic line-clamp-2">
-                      \u201c{previewMsg}\u201d
+                      “{previewMsg}”
                     </p>
                   )}
                 </div>

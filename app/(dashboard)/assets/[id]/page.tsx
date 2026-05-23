@@ -54,7 +54,7 @@ export default async function AssetDetailPage({ params }: { params: { id: string
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <Link href="/assets" className="habitta-link text-sm inline-block">
-        \u2190 Volver a activos
+        ← Volver a activos
       </Link>
 
       {/* ---- Header del activo ---- */}
@@ -91,13 +91,13 @@ export default async function AssetDetailPage({ params }: { params: { id: string
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-[var(--border)] pt-4">
           {asset.location && (
             <div>
-              <p className="text-xs font-semibold habitta-muted uppercase tracking-wide">Ubicaci\u00f3n</p>
+              <p className="text-xs font-semibold habitta-muted uppercase tracking-wide">Ubicación</p>
               <p className="text-sm mt-1">{asset.location}</p>
             </div>
           )}
           {asset.description && (
             <div>
-              <p className="text-xs font-semibold habitta-muted uppercase tracking-wide">Descripci\u00f3n</p>
+              <p className="text-xs font-semibold habitta-muted uppercase tracking-wide">Descripción</p>
               <p className="text-sm mt-1">{asset.description}</p>
             </div>
           )}
@@ -107,7 +107,7 @@ export default async function AssetDetailPage({ params }: { params: { id: string
       {/* ---- Responsables y ocupantes ---- */}
       <div className="habitta-card overflow-hidden">
         <div className="px-5 py-4 border-b border-[var(--border)] bg-[var(--surface)] flex items-center justify-between">
-          <h2 className="font-bold text-[var(--foreground)]">\ud83d\udc65 Responsables y ocupantes</h2>
+          <h2 className="font-bold text-[var(--foreground)]">👥 Responsables y ocupantes</h2>
           <span className="text-xs habitta-muted">{relations.length} persona{relations.length !== 1 ? "s" : ""}</span>
         </div>
 
@@ -136,7 +136,7 @@ export default async function AssetDetailPage({ params }: { params: { id: string
                     </span>
                   </div>
 
-                  {/* Bot\u00f3n eliminar (solo admin) */}
+                  {/* Botón eliminar (solo admin) */}
                   {isAdmin && (
                     <form
                       action={async (fd: FormData) => {
@@ -162,16 +162,16 @@ export default async function AssetDetailPage({ params }: { params: { id: string
         )}
       </div>
 
-      {/* ---- Formulario de asignaci\u00f3n (solo admin) ---- */}
+      {/* ---- Formulario de asignación (solo admin) ---- */}
       {isAdmin && (
         <div className="habitta-card p-5 space-y-4">
           <h3 className="font-semibold text-sm uppercase tracking-wide text-[var(--foreground)]">
-            \u2795 Asignar persona a este activo
+            ➕ Asignar persona a este activo
           </h3>
 
           {availableMembers.length === 0 ? (
             <p className="text-sm habitta-muted italic">
-              Todos los miembros de la organizaci\u00f3n ya est\u00e1n asignados a este activo.
+              Todos los miembros de la organización ya están asignados a este activo.
             </p>
           ) : (
             <form
@@ -204,7 +204,7 @@ export default async function AssetDetailPage({ params }: { params: { id: string
 
               <div>
                 <label className="text-xs font-semibold habitta-muted uppercase tracking-wide block mb-1">
-                  Tipo de relaci\u00f3n
+                  Tipo de relación
                 </label>
                 <select
                   name="relation_type"
@@ -219,13 +219,13 @@ export default async function AssetDetailPage({ params }: { params: { id: string
 
               <div>
                 <label className="text-xs font-semibold habitta-muted uppercase tracking-wide block mb-1">
-                  \u00bfResponsable principal?
+                  ¿Responsable principal?
                 </label>
                 <select
                   name="is_primary"
                   className="w-full text-sm border border-[var(--border)] rounded-md px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-[#d4a373]"
                 >
-                  <option value="true">S\u00ed</option>
+                  <option value="true">Sí</option>
                   <option value="false">No</option>
                 </select>
               </div>

@@ -45,13 +45,13 @@ export async function createTicketAction(formData: FormData) {
     };
 
     const parsed = ticketSchema.safeParse(data);
-    if (!parsed.success) return { error: "Datos del ticket inv\u00e1lidos" };
+    if (!parsed.success) return { error: "Datos del ticket inválidos" };
 
     await requireOrgRole(orgId, ["owner", "admin", "member"]);
 
     if (parsed.data.asset_id) {
       const assetIsValid = await assetBelongsToOrganization(parsed.data.asset_id, orgId);
-      if (!assetIsValid) return { error: "El activo seleccionado no pertenece a esta organizaci\u00f3n" };
+      if (!assetIsValid) return { error: "El activo seleccionado no pertenece a esta organización" };
     }
 
     const newTicket = await createTicket(
@@ -72,7 +72,7 @@ export async function createTicketAction(formData: FormData) {
 
     notifyOrgAdmins(
       orgId,
-      `\ud83c\udfab Nuevo ticket: ${parsed.data.title}`,
+      `🎫 Nuevo ticket: ${parsed.data.title}`,
       `Creado por un miembro. Revisa los tickets pendientes.`,
       "info"
     ).catch(() => {});
@@ -81,7 +81,7 @@ export async function createTicketAction(formData: FormData) {
     revalidatePath("/dashboard");
     return { success: true, ticketId: newTicket.id };
   } catch (error: any) {
-    return { error: error.message || "Ocurri\u00f3 un error al crear el ticket" };
+    return { error: error.message || "Ocurrió un error al crear el ticket" };
   }
 }
 
@@ -114,7 +114,7 @@ export async function changeTicketStatusAction(ticketId: string, status: TicketS
         if (ticket) {
           createNotification(
             orgId, ticket.creator_id,
-            "\u2705 Tu ticket fue resuelto",
+            "✅ Tu ticket fue resuelto",
             `"${ticket.title}" ha sido marcado como resuelto.`,
             "success"
           ).catch(() => {});
@@ -138,7 +138,7 @@ export async function respondToTicketAction(formData: FormData) {
     const orgId    = await getTicketOrganizationId(ticketId);
     await requireOrgRole(orgId, ["owner", "admin"]);
     const response = String(formData.get("response") ?? "").trim();
-    if (!response) return { error: "La respuesta no puede estar vac\u00eda" };
+    if (!response) return { error: "La respuesta no puede estar vacía" };
 
     await respondToTicket(ticketId, response);
     createAuditLog({
@@ -183,7 +183,7 @@ export async function addTicketCommentAction(formData: FormData) {
     const user     = await requireAuth();
     const ticketId = formData.get("ticket_id") as string;
     const message  = formData.get("message")   as string;
-    if (!message || message.trim().length === 0) return { error: "Mensaje vac\u00edo" };
+    if (!message || message.trim().length === 0) return { error: "Mensaje vacío" };
 
     const orgId = await getTicketOrganizationId(ticketId);
     await requireOrgRole(orgId, ["owner", "admin", "member"]);

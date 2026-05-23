@@ -33,8 +33,8 @@ function getAdmin() {
 }
 
 /**
- * Inserta un audit log v\u00eda RPC SECURITY DEFINER.
- * Fire-and-forget: nunca lanza error para no bloquear la acci\u00f3n principal.
+ * Inserta un audit log vía RPC SECURITY DEFINER.
+ * Fire-and-forget: nunca lanza error para no bloquear la acción principal.
  */
 export async function createAuditLog(params: {
   orgId:      string;

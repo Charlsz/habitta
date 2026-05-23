@@ -82,7 +82,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         <div className="px-3 py-4 border-t border-[var(--border)]">
           <form action={logoutAction}>
             <Button variant="ghost" size="sm" type="submit" className="w-full justify-start">
-              Cerrar sesi\u00f3n
+              Cerrar sesión
             </Button>
           </form>
         </div>

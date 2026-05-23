@@ -10,7 +10,7 @@ function getAdmin() {
   );
 }
 
-/** Notificaciones no le\u00eddas del usuario autenticado (usa RLS v\u00eda auth.uid()) */
+/** Notificaciones no leídas del usuario autenticado (usa RLS vía auth.uid()) */
 export async function getUnreadNotifications(limit = 5): Promise<Notification[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -19,7 +19,7 @@ export async function getUnreadNotifications(limit = 5): Promise<Notification[]>
   return (data ?? []) as Notification[];
 }
 
-/** Conteo r\u00e1pido de no le\u00eddas (head-only) */
+/** Conteo rápido de no leídas (head-only) */
 export async function getUnreadCount(): Promise<number> {
   const supabase = await createClient();
   const { count, error } = await supabase
@@ -30,7 +30,7 @@ export async function getUnreadCount(): Promise<number> {
   return count ?? 0;
 }
 
-/** Marcar todas las notificaciones del usuario como le\u00eddas */
+/** Marcar todas las notificaciones del usuario como leídas */
 export async function markAllNotificationsRead(userId: string): Promise<void> {
   const admin = getAdmin();
   const { error } = await admin.rpc("mark_notifications_read", { p_user_id: userId });
@@ -38,7 +38,7 @@ export async function markAllNotificationsRead(userId: string): Promise<void> {
 }
 
 /**
- * Crear una notificaci\u00f3n para un usuario espec\u00edfico.
+ * Crear una notificación para un usuario específico.
  * Siempre usa admin client para bypassear RLS.
  */
 export async function createNotification(
@@ -60,8 +60,8 @@ export async function createNotification(
 }
 
 /**
- * Notificar a todos los owners/admins de una organizaci\u00f3n.
- * Ignora errores para no bloquear la acci\u00f3n principal.
+ * Notificar a todos los owners/admins de una organización.
+ * Ignora errores para no bloquear la acción principal.
  */
 export async function notifyOrgAdmins(
   orgId:   string,
@@ -85,6 +85,6 @@ export async function notifyOrgAdmins(
       )
     );
   } catch {
-    // No bloquear la acci\u00f3n principal si falla la notificaci\u00f3n
+    // No bloquear la acción principal si falla la notificación
   }
 }
