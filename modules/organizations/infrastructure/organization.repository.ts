@@ -1,9 +1,10 @@
 import { createClient } from "@/modules/core/infrastructure/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { Organization, OrganizationInsert } from "../domain/organization.schema";
 
 export async function getOrganizations(userId: string): Promise<Organization[]> {
   const supabase = await createClient();
-  
+
   const { data, error } = await supabase
     .from("organizations")
     .select(`
@@ -29,24 +30,37 @@ export async function getOrganizationById(id: string): Promise<Organization> {
   return data as Organization;
 }
 
-export async function createOrganization(org: OrganizationInsert, userId: string): Promise<Organization> {
-  const supabase = await createClient();
+/**
+ * Crea una organizacion y asigna al usuario como 'owner'.
+ * Usa una funcion RPC con SECURITY DEFINER para evitar el problema de
+ * auth.uid() = null en Server Actions de Next.js cuando las cookies
+ * no propagan correctamente el JWT de Supabase.
+ * El user_id viene validado desde requireAuth() en el Server Action.
+ */
+export async function createOrganization(
+  org: OrganizationInsert,
+  userId: string
+): Promise<Organization> {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-  // Insertar la organización
-  const { data: newOrg, error: orgError } = await supabase
-    .from("organizations")
-    .insert([{ name: org.name, type: org.type }])
-    .select()
-    .single();
+  if (!serviceRoleKey || !supabaseUrl) {
+    throw new Error("Configuracion de Supabase incompleta. Falta SUPABASE_SERVICE_ROLE_KEY.");
+  }
 
-  if (orgError) throw new Error(orgError.message);
+  // Usamos el admin client para llamar la RPC con SECURITY DEFINER
+  // El user_id ya fue validado por requireAuth() antes de llegar aqui
+  const admin = createAdminClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
 
-  // Auto-asignar el creador como 'owner'
-  const { error: memberError } = await supabase
-    .from("organization_members")
-    .insert([{ organization_id: newOrg.id, user_id: userId, role: "owner" }]);
+  const { data, error } = await admin.rpc("create_organization_for_user", {
+    p_name: org.name,
+    p_type: org.type,
+    p_user_id: userId,
+  });
 
-  if (memberError) throw new Error(memberError.message);
+  if (error) throw new Error(error.message);
 
-  return newOrg as Organization;
+  return data as Organization;
 }
