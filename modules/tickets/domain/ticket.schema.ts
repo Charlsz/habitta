@@ -38,6 +38,7 @@ export const ticketSchema = z.object({
   title:           z.string().min(3, "El t\u00edtulo es muy corto"),
   description:     z.string().min(5, "Debes agregar una descripci\u00f3n"),
   priority:        TicketPriorityEnum.default("medium"),
+  due_date:        z.string().optional().nullable(),
 });
 
 export type TicketStatus   = z.infer<typeof TicketStatusEnum>;
@@ -49,6 +50,9 @@ export interface Ticket extends TicketInsert {
   creator_id:  string;
   category_id: string | null;
   status:      TicketStatus;
+  response:    string | null;
+  due_date:    string | null;
+  closed_at:   string | null;
   created_at:  string;
   updated_at:  string;
 }
