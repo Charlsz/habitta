@@ -41,7 +41,9 @@ export async function getPrimaryResponsible(
     .limit(1)
     .maybeSingle();
   if (error || !data) return null;
-  const p = data.profiles as { full_name: string } | null;
+  // Supabase infiere profiles como array sin tipos generados; cast via unknown es seguro
+  // porque .maybeSingle() + FK directa retorna un objeto en runtime.
+  const p = (data.profiles as unknown) as { full_name: string } | null;
   if (!p) return null;
   return { full_name: p.full_name, relation_type: data.relation_type as RelationType };
 }
