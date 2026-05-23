@@ -39,27 +39,41 @@
   --status-closed-fg:      #7A6A52;
 
   /* Sombras */
-  --shadow-card:   0 1px 3px rgba(44,36,22,0.06), 0 1px 2px rgba(44,36,22,0.04);
-  --shadow-hover:  0 4px 16px rgba(44,36,22,0.10);
-  --shadow-modal:  0 8px 32px rgba(44,36,22,0.14);
+  --shadow-card:  0 1px 3px rgba(44,36,22,0.06), 0 1px 2px rgba(44,36,22,0.04);
+  --shadow-hover: 0 4px 16px rgba(44,36,22,0.10);
+  --shadow-modal: 0 8px 32px rgba(44,36,22,0.14);
 }
 
 @theme inline {
+  /* Todos los tokens mapeados como clases Tailwind (ej: bg-background, text-muted, border-border) */
   --color-background:   var(--background);
   --color-surface:      var(--surface);
+  --color-surface-high: var(--surface-high);
+  --color-sidebar:      var(--sidebar-bg);
   --color-foreground:   var(--foreground);
   --color-muted:        var(--muted);
   --color-subtle:       var(--subtle);
   --color-border:       var(--border);
+  --color-border-focus: var(--border-focus);
   --color-accent:       var(--accent);
   --color-accent-hover: var(--accent-hover);
-  --color-sidebar:      var(--sidebar-bg);
-  --font-sans:          var(--font-dm-sans);
-  --font-serif:         var(--font-playfair);
+  --color-accent-fg:    var(--accent-fg);
+
+  /* Paleta base también disponible como clases */
+  --color-sage:    #ccd5ae;
+  --color-lima:    #e9edc9;
+  --color-cream:   #fefae0;
+  --color-wheat:   #faedcd;
+  --color-caramel: #d4a373;
+
+  /* Fuentes */
+  --font-sans:  var(--font-dm-sans);
+  --font-serif: var(--font-playfair);
 }
 
 * {
   border-color: var(--border);
+  box-sizing: border-box;
 }
 
 body {
@@ -67,6 +81,7 @@ body {
   color: var(--foreground);
   font-family: var(--font-dm-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 ::selection {
@@ -74,9 +89,7 @@ body {
   color: #ffffff;
 }
 
-/* Scrollbar personalizado */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--background); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: var(--background); }
+::-webkit-scrollbar-thumb  { background: var(--border); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
-
