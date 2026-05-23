@@ -10,6 +10,12 @@ function getAdmin() {
   );
 }
 
+export type OrgMember = {
+  user_id: string;
+  role: "owner" | "admin" | "member";
+  profiles: { full_name: string | null } | null;
+};
+
 export async function getTickets(
   orgId: string,
   filters?: { status?: string; asset_id?: string }
@@ -163,12 +169,12 @@ export async function uploadTicketAttachment(
   });
 }
 
-export async function getOrgMembers(orgId: string) {
+export async function getOrgMembers(orgId: string): Promise<OrgMember[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("organization_members")
     .select("user_id, role, profiles (full_name)")
     .eq("organization_id", orgId);
   if (error) throw new Error(error.message);
-  return data ?? [];
+  return (data ?? []) as OrgMember[];
 }
