@@ -1,38 +1,68 @@
 import { logoutAction } from "@/modules/auth/application/auth.actions";
 import Link from "next/link";
 import { ReactNode } from "react";
+import { Button } from "@/modules/core/components"; // Verify index.ts re-exports this
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex h-screen w-full bg-gray-50 text-gray-900">
-      {/* Sidebar: Presentational (Deberá extraerse luego a src/modules/core/presentation/sidebar.tsx) */}
-      <aside className="w-64 border-r bg-white flex flex-col">
-        <div className="h-16 flex items-center px-6 border-b font-bold text-xl text-blue-600">
+    <div className="flex h-screen w-full bg-background text-foreground font-sans">
+      {/* Sidebar */}
+      <aside className="w-[280px] bg-sidebar border-r border-border flex flex-col">
+        <div className="h-16 flex items-center px-6 font-serif font-bold text-2xl tracking-tight text-foreground">
           Habitta
         </div>
-        <nav className="flex-1 p-4 space-y-2">
-          <Link href="/dashboard" className="block px-4 py-2 rounded-md hover:bg-gray-100 font-medium">Dashboard</Link>
-          <Link href="/organizations" className="block px-4 py-2 rounded-md hover:bg-gray-100 font-medium">Organizaciones</Link>
-          <Link href="/assets" className="block px-4 py-2 rounded-md hover:bg-gray-100 font-medium">Activos</Link>
-          <Link href="/tickets" className="block px-4 py-2 rounded-md hover:bg-gray-100 font-medium">Tickets</Link>
-          <Link href="/scheduling" className="block px-4 py-2 rounded-md hover:bg-gray-100 font-medium">Agenda</Link>
+        <nav className="flex-1 px-4 py-6 space-y-1">
+          {/* Dashboard */}
+          <Link href="/dashboard" className="flex items-center gap-3 px-3 py-2.5 rounded-[8px] hover:bg-white transition-colors group">
+            <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-caramel)] group-hover:scale-125 transition-transform"></span>
+            <span className="font-medium text-sm">Dashboard</span>
+          </Link>
+          
+          {/* Organizaciones */}
+          <Link href="/organizations" className="flex items-center gap-3 px-3 py-2.5 rounded-[8px] hover:bg-white transition-colors group">
+            <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-sage)] group-hover:scale-125 transition-transform"></span>
+            <span className="font-medium text-sm">Organizaciones</span>
+          </Link>
+          
+          {/* Activos */}
+          <Link href="/assets" className="flex items-center gap-3 px-3 py-2.5 rounded-[8px] hover:bg-white transition-colors group">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#A8957D] group-hover:scale-125 transition-transform"></span>
+            <span className="font-medium text-sm">Activos</span>
+          </Link>
+          
+          {/* Tickets */}
+          <Link href="/tickets" className="flex items-center gap-3 px-3 py-2.5 rounded-[8px] hover:bg-white transition-colors group">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#E8DECE] group-hover:scale-125 transition-transform"></span>
+            <span className="font-medium text-sm">Tickets</span>
+          </Link>
+          
+          {/* Agenda */}
+          <Link href="/scheduling" className="flex items-center gap-3 px-3 py-2.5 rounded-[8px] hover:bg-white transition-colors group flex-col items-start hidden">
+            <span className="w-2.5 h-2.5 rounded-full bg-border-focus group-hover:scale-125 transition-transform"></span>
+            <span className="font-medium text-sm">Agenda</span>
+          </Link>
+
+           <Link href="/scheduling" className="flex items-center gap-3 px-3 py-2.5 rounded-[8px] hover:bg-white transition-colors group">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#7A6A52] group-hover:scale-125 transition-transform"></span>
+            <span className="font-medium text-sm">Agenda</span>
+          </Link>
         </nav>
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden bg-background">
         {/* Header */}
-        <header className="h-16 bg-white border-b flex items-center px-6 justify-end gap-4">
-          <div className="text-sm font-medium">Perfil</div>
+        <header className="h-16 bg-surface-high border-b border-border flex items-center px-8 justify-end gap-6 shadow-[var(--shadow-card)]">
+          <div className="text-sm font-medium text-muted">Perfil</div>
           <form action={logoutAction}>
-            <button className="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-md font-medium text-gray-700">
+            <Button variant="ghost" size="sm" type="submit">
               Cerrar Sesión
-            </button>
+            </Button>
           </form>
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 overflow-auto p-8">
           {children}
         </main>
       </div>
