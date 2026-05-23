@@ -67,3 +67,15 @@ export async function updateEventStatus(eventId: string, status: EventStatus) {
     
   if (error) throw new Error(error.message);
 }
+
+export async function getEventOrganizationId(eventId: string): Promise<string> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("events")
+    .select("organization_id")
+    .eq("id", eventId)
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data.organization_id;
+}

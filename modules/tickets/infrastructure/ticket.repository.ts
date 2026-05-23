@@ -131,3 +131,15 @@ export async function getTicketAttachments(ticketId: string) {
   if (error) throw new Error(error.message);
   return data;
 }
+
+export async function getTicketOrganizationId(ticketId: string): Promise<string> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("tickets")
+    .select("organization_id")
+    .eq("id", ticketId)
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data.organization_id;
+}

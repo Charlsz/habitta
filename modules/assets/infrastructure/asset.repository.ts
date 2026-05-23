@@ -32,3 +32,17 @@ export async function createAsset(asset: AssetInsert): Promise<Asset> {
   if (error) throw new Error(error.message);
   return data as Asset;
 }
+
+export async function assetBelongsToOrganization(assetId: string, organizationId: string): Promise<boolean> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("assets")
+    .select("id")
+    .eq("id", assetId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return Boolean(data);
+}

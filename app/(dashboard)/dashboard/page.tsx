@@ -10,9 +10,6 @@ import { TicketStatus } from "@/modules/tickets/domain/ticket.schema";
 export default async function DashboardPage({ searchParams }: { searchParams: { org?: string } }) {
   const user = await requireAuth();
   const orgs = await getOrganizations(user.id);
-  
-  const currentOrgId = searchParams.org || orgs[0]?.id;
-  const currentOrg = orgs.find(o => o.id === currentOrgId);
 
   // Si no pertenece a nada, mostramos empty state
   if (orgs.length === 0) {
@@ -26,6 +23,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
   }
 
   // Traer métricas usando Promise.all para máxima velocidad
+  const requestedOrg = searchParams.org;
+  const currentOrg = orgs.find((org) => org.id === requestedOrg) ?? orgs[0];
+  const currentOrgId = currentOrg.id;
+
   const metrics = await getDashboardMetrics(currentOrgId);
 
   // Data para Recharts

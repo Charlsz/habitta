@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { ticketSchema, TicketStatus } from "../domain/ticket.schema";
-import { createTicket, uploadTicketAttachment, updateTicketStatus, addTicketComment } from "../infrastructure/ticket.repository";
+import { createTicket, uploadTicketAttachment, updateTicketStatus, addTicketComment, getTicketOrganizationId } from "../infrastructure/ticket.repository";
 import { requireAuth, requireOrgRole } from "@/modules/auth/application/auth.guard";
-import { redirect } from "next/navigation";
+import { assetBelongsToOrganization } from "@/modules/assets/infrastructure/asset.repository";
 
 export async function createTicketAction(formData: FormData) {
   try {
@@ -29,6 +29,11 @@ export async function createTicketAction(formData: FormData) {
     // Validar permisos en la org
     await requireOrgRole(orgId, ["owner", "admin", "member"]);
 
+    if (parsed.data.asset_id) {
+      const assetIsValid = await assetBelongsToOrganization(parsed.data.asset_id, orgId);
+      if (!assetIsValid) return { error: "El activo seleccionado no pertenece a esta organización" };
+    }
+
     // Crear DB
     const newTicket = await createTicket(parsed.data, user.id);
 
@@ -49,6 +54,8 @@ export async function changeTicketStatusAction(ticketId: string, status: TicketS
   // Aquí podríamos validar roles de "admin" para cerrar tickets. Lo mantendré general.
   try {
     await requireAuth();
+    const orgId = await getTicketOrganizationId(ticketId);
+    await requireOrgRole(orgId, ["owner", "admin", "member"]);
     await updateTicketStatus(ticketId, status);
     revalidatePath(`/tickets/${ticketId}`);
     return { success: true };
@@ -64,6 +71,9 @@ export async function addTicketCommentAction(formData: FormData) {
     const message = formData.get("message") as string;
 
     if (!message || message.trim().length === 0) return { error: "Mensaje vacío" };
+
+    const orgId = await getTicketOrganizationId(ticketId);
+    await requireOrgRole(orgId, ["owner", "admin", "member"]);
 
     await addTicketComment(ticketId, user.id, message);
     revalidatePath(`/tickets/${ticketId}`);

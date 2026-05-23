@@ -5,11 +5,13 @@ import {
 } from "@/modules/tickets/infrastructure/ticket.repository";
 import { TicketPriorityBadge, TicketStatusBadge } from "@/modules/tickets/presentation/ticket-badge";
 import { changeTicketStatusAction, addTicketCommentAction } from "@/modules/tickets/application/ticket.actions";
+import { requireOrgRole } from "@/modules/auth/application/auth.guard";
 import Link from "next/link";
 import { TicketStatus } from "@/modules/tickets/domain/ticket.schema";
 
 export default async function TicketDetailPage({ params }: { params: { id: string } }) {
   const ticket = await getTicketById(params.id);
+  await requireOrgRole(ticket.organization_id, ["owner", "admin", "member"]);
   const comments = await getTicketComments(params.id);
   const attachments = await getTicketAttachments(params.id);
 

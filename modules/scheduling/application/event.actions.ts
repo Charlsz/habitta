@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { eventSchema, EventStatus } from "../domain/event.schema";
-import { createEvent, checkAssetAvailability, updateEventStatus } from "../infrastructure/event.repository";
+import { createEvent, checkAssetAvailability, updateEventStatus, getEventOrganizationId } from "../infrastructure/event.repository";
 import { requireAuth, requireOrgRole } from "@/modules/auth/application/auth.guard";
+import { assetBelongsToOrganization } from "@/modules/assets/infrastructure/asset.repository";
 
 export async function createEventAction(formData: FormData) {
   try {
@@ -24,6 +25,14 @@ export async function createEventAction(formData: FormData) {
     const parsed = eventSchema.safeParse(data);
     if (!parsed.success) return { error: parsed.error.issues[0]?.message || "Datos inválidos" };
 
+    // Permisos
+    await requireOrgRole(orgId, ["owner", "admin", "member"]);
+
+    if (parsed.data.asset_id) {
+      const assetIsValid = await assetBelongsToOrganization(parsed.data.asset_id, orgId);
+      if (!assetIsValid) return { error: "El activo seleccionado no pertenece a esta organización" };
+    }
+
     // Validar cruce de horarios (Solo si afecta a un Activo)
     if (parsed.data.asset_id) {
       const isAvailable = await checkAssetAvailability(parsed.data.asset_id, parsed.data.start_time, parsed.data.end_time);
@@ -31,9 +40,6 @@ export async function createEventAction(formData: FormData) {
         return { error: "El activo seleccionado ya tiene un evento en este rango de horario." };
       }
     }
-
-    // Permisos
-    await requireOrgRole(orgId, ["owner", "admin", "member"]);
 
     // Guardar
     await createEvent(parsed.data, user.id);
@@ -49,6 +55,8 @@ export async function changeEventStatusAction(eventId: string, status: EventStat
   try {
     // Si quisieras que los usuarios no puedan aproborse a si mismos, validarías el rol "owner/admin" aquí
     await requireAuth();
+    const orgId = await getEventOrganizationId(eventId);
+    await requireOrgRole(orgId, ["owner", "admin", "member"]);
     await updateEventStatus(eventId, status);
     revalidatePath("/scheduling");
     return { success: true };

@@ -11,7 +11,8 @@ export default async function TicketsPage({ searchParams }: { searchParams: { st
   
   // Para la demo de la hackathon: traemos las orgs del usuario
   const orgs = await getOrganizations(user.id);
-  const selectedOrg = searchParams.org || orgs[0]?.id;
+  const requestedOrg = searchParams.org;
+  const selectedOrg = orgs.some((org) => org.id === requestedOrg) ? requestedOrg : orgs[0]?.id;
   
   // Traemos tickets de esa org filtrados
   const tickets = selectedOrg ? await getTickets(selectedOrg, { 
