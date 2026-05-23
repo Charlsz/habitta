@@ -20,27 +20,27 @@ import { TicketStatus } from "@/modules/tickets/domain/ticket.schema";
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: { org?: string };
+  searchParams: Promise<{ org?: string }>;
 }) {
+  const { org: requestedOrgId } = await searchParams;
   const user = await requireAuth();
   const orgs = await getOrganizations(user.id);
 
   if (orgs.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-10 text-center space-y-4">
-        <h2 className="habitta-title text-2xl">\u00a1Bienvenido a Habitta!</h2>
+        <h2 className="habitta-title text-2xl">¡Bienvenido a Habitta!</h2>
         <p className="habitta-muted">
-          Para ver tu dashboard necesitas unirte o crear una organizaci\u00f3n.
+          Para ver tu dashboard necesitas unirte o crear una organización.
         </p>
         <Link href="/organizations/new" className="habitta-primary px-4 py-2">
-          Crear Organizaci\u00f3n
+          Crear Organización
         </Link>
       </div>
     );
   }
 
-  const requestedOrg = searchParams.org;
-  const currentOrg   = orgs.find((org) => org.id === requestedOrg) ?? orgs[0];
+  const currentOrg   = orgs.find((org) => org.id === requestedOrgId) ?? orgs[0];
   const currentOrgId = currentOrg.id;
   const metrics      = await getDashboardMetrics(currentOrgId);
 
@@ -48,7 +48,7 @@ export default async function DashboardPage({
     { name: "Abiertos",        count: metrics.openTickets,    color: "#3b82f6" },
     { name: "Resueltos",       count: metrics.resolvedTickets, color: "#10b981" },
     {
-      name: "Pdt. Atenci\u00f3n",
+      name: "Pdt. Atención",
       count:
         metrics.totalTickets -
         metrics.openTickets -
@@ -62,7 +62,7 @@ export default async function DashboardPage({
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
         <div>
-          <h1 className="habitta-title text-3xl">Dashboard General</h1>
+          <h1 className="habitta-title text-3xl">Panel General</h1>
           <p className="habitta-muted text-sm mt-1">
             Resumen operativo para <strong>{currentOrg?.name}</strong>
           </p>
@@ -120,10 +120,10 @@ export default async function DashboardPage({
 
       {/* CHARTS + ACTIVIDAD + TOP ACTIVOS */}
       <div className="grid gap-6 lg:grid-cols-3 items-start">
-        {/* Gr\u00e1fica distribuci\u00f3n */}
+        {/* Gráfica distribución */}
         <div className="habitta-card-high lg:col-span-1 p-6 flex flex-col h-full">
           <h3 className="font-bold text-[var(--foreground)] border-b pb-2">
-            Distribuci\u00f3n de Tickets
+            Distribución de Tickets
           </h3>
           <StatusBarChart data={chartData} />
         </div>
@@ -133,13 +133,13 @@ export default async function DashboardPage({
           <div className="p-4 border-b bg-[var(--surface)] flex justify-between items-center">
             <h3 className="font-bold text-[var(--foreground)]">Actividad Reciente</h3>
             <Link href="/tickets" className="habitta-link text-xs">
-              Ver todos \u2192
+              Ver todos →
             </Link>
           </div>
           <div className="divide-y">
             {metrics.recentTickets.length === 0 ? (
               <div className="p-8 text-center habitta-muted text-sm">
-                No hay tickets registrados a\u00fan.
+                No hay tickets registrados aún.
               </div>
             ) : (
               metrics.recentTickets.map((ticket: any) => (
@@ -222,22 +222,19 @@ function TopAssetsByTickets({
 }: {
   items: { asset_name: string; ticket_count: number }[];
 }) {
-  // Filtrar activos que tienen al menos 1 ticket para mostrar info relevante
   const filtered = items.filter((i) => i.ticket_count > 0);
-
-  // M\u00e1ximo para calcular la barra proporcional
   const max = filtered.length > 0 ? filtered[0].ticket_count : 1;
 
   return (
     <div className="habitta-card-high overflow-hidden">
       <div className="p-4 border-b bg-[var(--surface)] flex items-center gap-2">
         <Building2 className="w-4 h-4 text-[var(--muted)]" />
-        <h3 className="font-bold text-[var(--foreground)]">Activos con m\u00e1s incidencias</h3>
+        <h3 className="font-bold text-[var(--foreground)]">Unidades con más incidencias</h3>
       </div>
 
       {filtered.length === 0 ? (
         <div className="p-8 text-center habitta-muted text-sm">
-          Ning\u00fan activo tiene tickets registrados a\u00fan.
+          Ninguna unidad tiene solicitudes registradas aún.
         </div>
       ) : (
         <ul className="divide-y">
@@ -246,7 +243,6 @@ function TopAssetsByTickets({
             const isTop    = idx === 0;
             return (
               <li key={item.asset_name} className="flex items-center gap-4 px-5 py-3">
-                {/* Posici\u00f3n */}
                 <span
                   className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold shrink-0 ${
                     isTop
@@ -256,8 +252,6 @@ function TopAssetsByTickets({
                 >
                   {idx + 1}
                 </span>
-
-                {/* Nombre + barra */}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-[var(--foreground)] truncate">
                     {item.asset_name}
@@ -271,8 +265,6 @@ function TopAssetsByTickets({
                     />
                   </div>
                 </div>
-
-                {/* Badge con conteo */}
                 <span
                   className={`shrink-0 px-2.5 py-0.5 rounded-full text-xs font-bold ${
                     isTop
@@ -280,7 +272,7 @@ function TopAssetsByTickets({
                       : "bg-[var(--surface)] text-[var(--muted)]"
                   }`}
                 >
-                  {item.ticket_count} ticket{item.ticket_count !== 1 ? "s" : ""}
+                  {item.ticket_count} solicitud{item.ticket_count !== 1 ? "es" : ""}
                 </span>
               </li>
             );

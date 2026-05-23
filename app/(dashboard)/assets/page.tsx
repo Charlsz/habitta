@@ -21,7 +21,6 @@ export default async function AssetsPage() {
   const assetsByOrg = await Promise.all(
     orgs.map(async (org) => {
       const assets = await getAssetsByOrganization(org.id);
-      // Cargamos el responsable principal de cada activo en paralelo
       const assetsWithResponsible = await Promise.all(
         assets.map(async (asset) => ({
           ...asset,
@@ -37,24 +36,24 @@ export default async function AssetsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="habitta-title text-3xl">Activos</h1>
+        <h1 className="habitta-title text-3xl">Unidades</h1>
         <p className="habitta-muted text-sm mt-1">
-          Inventario operativo vinculado a tus organizaciones.
+          Inventario de unidades vinculadas a tus organizaciones.
         </p>
       </div>
 
       {orgs.length === 0 ? (
         <div className="habitta-card p-8 text-center">
-          <p className="habitta-muted">Crea una organizaci\u00f3n para empezar a registrar activos.</p>
+          <p className="habitta-muted">Crea una organización para empezar a registrar unidades.</p>
           <Link href="/organizations/new" className="habitta-primary inline-flex px-4 py-2 mt-4">
-            Crear Organizaci\u00f3n
+            Crear Organización
           </Link>
         </div>
       ) : totalAssets === 0 ? (
         <div className="habitta-card p-8 text-center">
-          <p className="habitta-muted">Todav\u00eda no tienes activos registrados.</p>
+          <p className="habitta-muted">Todavía no tienes unidades registradas.</p>
           <Link href={`/organizations/${orgs[0].id}`} className="habitta-primary inline-flex px-4 py-2 mt-4">
-            Registrar Activo
+            Registrar Primera Unidad
           </Link>
         </div>
       ) : (
@@ -64,7 +63,7 @@ export default async function AssetsPage() {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h2 className="text-xl font-bold">{org.name}</h2>
-                  <p className="habitta-muted text-sm">{assets.length} activos registrados</p>
+                  <p className="habitta-muted text-sm">{assets.length} unidad{assets.length !== 1 ? "es" : ""} registrada{assets.length !== 1 ? "s" : ""}</p>
                 </div>
                 <Link href={`/organizations/${org.id}`} className="habitta-link text-sm">
                   Gestionar
@@ -111,7 +110,7 @@ export default async function AssetsPage() {
                               {asset.status === "active"
                                 ? "Activo"
                                 : asset.status === "maintenance"
-                                ? "Mantenimiento"
+                                ? "En mantenimiento"
                                 : "Inactivo"}
                             </span>
                           </div>
@@ -121,7 +120,6 @@ export default async function AssetsPage() {
                           <p className="habitta-muted text-sm mt-3 line-clamp-2">{asset.description}</p>
                         )}
 
-                        {/* Responsable principal */}
                         {pr ? (
                           <div className="mt-3 pt-3 border-t border-[var(--border)] flex items-center gap-2">
                             <div className="w-6 h-6 rounded-full bg-[#d4a373]/20 flex items-center justify-center text-[#d4a373] text-xs font-bold shrink-0">

@@ -5,12 +5,12 @@ import { getTickets } from "@/modules/tickets/infrastructure/ticket.repository";
 import { TicketPriorityBadge, TicketStatusBadge } from "@/modules/tickets/presentation/ticket-badge";
 import { CategoryBadge } from "@/modules/ticket-categories/presentation/category-badge";
 import Link from "next/link";
-import { TicketStatus, TICKET_STATUS_LABELS } from "@/modules/tickets/domain/ticket.schema";
+import { TicketStatus } from "@/modules/tickets/domain/ticket.schema";
 
 const STATUS_OPTIONS = [
   { value: "all",         label: "Todos" },
   { value: "open",        label: "Abierto" },
-  { value: "in_review",   label: "En revisi\u00f3n" },
+  { value: "in_review",   label: "En revisión" },
   { value: "in_progress", label: "En proceso" },
   { value: "on_hold",     label: "En espera" },
   { value: "resolved",    label: "Resuelto" },
@@ -21,16 +21,17 @@ const STATUS_OPTIONS = [
 export default async function TicketsPage({
   searchParams,
 }: {
-  searchParams: { status?: string; asset?: string; org?: string };
+  searchParams: Promise<{ status?: string; asset?: string; org?: string }>;
 }) {
-  const user      = await requireAuth();
-  const orgs      = await getOrganizations(user.id);
-  const selectedOrg = orgs.some((o) => o.id === searchParams.org)
-    ? searchParams.org
+  const params      = await searchParams;
+  const user        = await requireAuth();
+  const orgs        = await getOrganizations(user.id);
+  const selectedOrg = orgs.some((o) => o.id === params.org)
+    ? params.org
     : orgs[0]?.id;
 
   const tickets = selectedOrg
-    ? await getTickets(selectedOrg, { status: searchParams.status, asset_id: searchParams.asset })
+    ? await getTickets(selectedOrg, { status: params.status, asset_id: params.asset })
     : [];
   const assets = selectedOrg ? await getAssetsByOrganization(selectedOrg) : [];
 
@@ -38,11 +39,11 @@ export default async function TicketsPage({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
-          <h1 className="habitta-title text-3xl">Gesti\u00f3n de Tickets</h1>
-          <p className="habitta-muted text-sm mt-1">Registra y atiende incidencias o PQRs.</p>
+          <h1 className="habitta-title text-3xl">Solicitudes</h1>
+          <p className="habitta-muted text-sm mt-1">Registra y gestiona solicitudes, incidencias o PQR.</p>
         </div>
         <Link href="/tickets/new" className="habitta-primary px-4 py-2 text-sm font-medium">
-          + Levantar Ticket
+          + Nueva Solicitud
         </Link>
       </div>
 
@@ -50,21 +51,21 @@ export default async function TicketsPage({
       <div className="habitta-card p-4">
         <form className="flex flex-wrap gap-4">
           <div>
-            <label className="text-xs font-semibold habitta-muted uppercase">Organizaci\u00f3n</label>
+            <label className="text-xs font-semibold habitta-muted uppercase">Organización</label>
             <select name="org" defaultValue={selectedOrg} className="block w-48 mt-1 border border-[var(--border)] rounded-md text-sm p-2 bg-white">
               {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
             </select>
           </div>
           <div>
             <label className="text-xs font-semibold habitta-muted uppercase">Estado</label>
-            <select name="status" defaultValue={searchParams.status || "all"} className="block w-44 mt-1 border border-[var(--border)] rounded-md text-sm p-2 bg-white">
+            <select name="status" defaultValue={params.status || "all"} className="block w-44 mt-1 border border-[var(--border)] rounded-md text-sm p-2 bg-white">
               {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-xs font-semibold habitta-muted uppercase">Activo</label>
-            <select name="asset" defaultValue={searchParams.asset || "all"} className="block w-48 mt-1 border border-[var(--border)] rounded-md text-sm p-2 bg-white">
-              <option value="all">Todos los activos</option>
+            <label className="text-xs font-semibold habitta-muted uppercase">Unidad</label>
+            <select name="asset" defaultValue={params.asset || "all"} className="block w-48 mt-1 border border-[var(--border)] rounded-md text-sm p-2 bg-white">
+              <option value="all">Todas las unidades</option>
               {assets.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           </div>
@@ -78,7 +79,7 @@ export default async function TicketsPage({
       <div className="habitta-card overflow-hidden">
         {tickets.length === 0 ? (
           <div className="p-8 text-center habitta-muted text-sm">
-            No hay tickets que coincidan con estos criterios.
+            No hay solicitudes que coincidan con estos criterios.
           </div>
         ) : (
           <div className="divide-y">
@@ -99,7 +100,7 @@ export default async function TicketsPage({
                       />
                     )}
                     {t.assignee?.full_name ? (
-                      <span className="text-xs text-[#c8935f] font-medium">\ud83d\udc64 {t.assignee.full_name}</span>
+                      <span className="text-xs text-[#c8935f] font-medium">👤 {t.assignee.full_name}</span>
                     ) : (
                       <span className="text-xs text-red-400 font-medium">Sin asignar</span>
                     )}
@@ -111,7 +112,7 @@ export default async function TicketsPage({
                 {t.assets && (
                   <div className="sm:text-right flex sm:flex-col items-center sm:items-end justify-center gap-2 shrink-0">
                     <span className="text-xs font-semibold px-2 py-1 bg-[var(--surface)] rounded text-[var(--muted)]">
-                      \ud83d\udccd {t.assets.name}
+                      📍 {t.assets.name}
                     </span>
                   </div>
                 )}
