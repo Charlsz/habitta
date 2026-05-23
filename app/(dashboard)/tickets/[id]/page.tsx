@@ -28,15 +28,20 @@ function formatDate(iso: string | null | undefined) {
   });
 }
 
-export default async function TicketDetailPage({ params }: { params: { id: string } }) {
-  const ticket = await getTicketById(params.id);
+export default async function TicketDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const ticket = await getTicketById(id);
   const { role } = await requireOrgRole(ticket.organization_id, ["owner", "admin", "member"]);
 
   const [comments, attachments, members, auditLogs] = await Promise.all([
-    getTicketComments(params.id),
-    getTicketAttachments(params.id),
+    getTicketComments(id),
+    getTicketAttachments(id),
     getOrgMembers(ticket.organization_id),
-    getAuditLogs(params.id, "ticket").catch(() => []),
+    getAuditLogs(id, "ticket").catch(() => []),
   ]);
 
   const isAdmin      = role === "owner" || role === "admin";
@@ -45,7 +50,7 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <Link href="/tickets" className="habitta-link text-sm mb-2 inline-block">
-        ← Volver a tickets
+        ← Volver a solicitudes
       </Link>
 
       {/* -------- Header -------- */}
@@ -109,7 +114,7 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
         <div className="mt-6 flex flex-wrap gap-6 border-t border-[var(--border)] pt-4">
           {(ticket as any).assets && (
             <div>
-              <p className="text-xs font-semibold habitta-muted uppercase tracking-wide">Activo Afectado</p>
+              <p className="text-xs font-semibold habitta-muted uppercase tracking-wide">Unidad afectada</p>
               <p className="text-sm font-medium mt-1">{(ticket as any).assets.name}</p>
             </div>
           )}
@@ -191,7 +196,7 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
       ) : (
         isAdmin && (
           <div className="rounded-xl border border-dashed border-[var(--border)] p-4">
-            <p className="text-xs habitta-muted italic">Aún no hay respuesta administrativa para este ticket.</p>
+            <p className="text-xs habitta-muted italic">Aún no hay respuesta administrativa para esta solicitud.</p>
           </div>
         )
       )}
@@ -265,7 +270,7 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
             type="submit"
             className="mt-3 bg-[var(--foreground)] text-[var(--background)] px-4 py-2 rounded-md font-medium text-sm hover:opacity-80 transition-opacity"
           >
-            Enviar Respuesta
+            Enviar respuesta
           </button>
         </form>
       </div>
