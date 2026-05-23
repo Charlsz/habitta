@@ -17,7 +17,12 @@ export async function getTickets(
   const supabase = await createClient();
   let query = supabase
     .from("tickets")
-    .select(`*, assets (name), profiles (full_name)`)
+    .select(`
+      *,
+      assets (name),
+      profiles!tickets_creator_id_fkey (full_name),
+      assignee:profiles!tickets_assigned_to_fkey (full_name)
+    `)
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: false });
 
@@ -33,11 +38,26 @@ export async function getTicketById(id: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("tickets")
-    .select(`*, assets (name, location), profiles (full_name)`)
+    .select(`
+      *,
+      assets (name, location),
+      profiles!tickets_creator_id_fkey (full_name),
+      assignee:profiles!tickets_assigned_to_fkey (full_name)
+    `)
     .eq("id", id)
     .single();
   if (error) throw new Error(error.message);
   return data;
+}
+
+export async function getOrgMembers(organizationId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("organization_members")
+    .select("user_id, role, profiles (full_name)")
+    .eq("organization_id", organizationId);
+  if (error) throw new Error(error.message);
+  return (data ?? []) as { user_id: string; role: string; profiles: { full_name: string } }[];
 }
 
 export async function getTicketComments(ticketId: string): Promise<TicketComment[]> {
@@ -63,7 +83,6 @@ export async function createTicket(ticket: TicketInsert, userId: string): Promis
   });
   if (error) throw new Error(error.message);
 
-  // Si hay due_date, lo guardamos aparte ya que create_ticket_for_user no lo soporta
   const created = data as Ticket;
   if (ticket.due_date) {
     const { error: ddErr } = await admin
@@ -73,7 +92,6 @@ export async function createTicket(ticket: TicketInsert, userId: string): Promis
     if (ddErr) throw new Error(ddErr.message);
     created.due_date = ticket.due_date;
   }
-
   return created;
 }
 
@@ -92,6 +110,15 @@ export async function respondToTicket(ticketId: string, response: string) {
   const { error } = await admin.rpc("respond_to_ticket", {
     p_ticket_id: ticketId,
     p_response:  response,
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function assignTicket(ticketId: string, assignedTo: string | null) {
+  const admin = getAdmin();
+  const { error } = await admin.rpc("assign_ticket", {
+    p_ticket_id:   ticketId,
+    p_assigned_to: assignedTo,
   });
   if (error) throw new Error(error.message);
 }

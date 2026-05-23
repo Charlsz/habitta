@@ -2,12 +2,14 @@ import {
   getTicketById,
   getTicketComments,
   getTicketAttachments,
+  getOrgMembers,
 } from "@/modules/tickets/infrastructure/ticket.repository";
 import { TicketPriorityBadge, TicketStatusBadge } from "@/modules/tickets/presentation/ticket-badge";
 import {
   changeTicketStatusAction,
   addTicketCommentAction,
   respondToTicketAction,
+  assignTicketAction,
 } from "@/modules/tickets/application/ticket.actions";
 import { requireOrgRole } from "@/modules/auth/application/auth.guard";
 import Link from "next/link";
@@ -17,13 +19,7 @@ import {
 } from "@/modules/tickets/domain/ticket.schema";
 
 const ALL_STATUSES: TicketStatus[] = [
-  "open",
-  "in_review",
-  "in_progress",
-  "on_hold",
-  "resolved",
-  "rejected",
-  "closed",
+  "open", "in_review", "in_progress", "on_hold", "resolved", "rejected", "closed",
 ];
 
 function formatDate(iso: string | null | undefined) {
@@ -34,12 +30,15 @@ function formatDate(iso: string | null | undefined) {
 }
 
 export default async function TicketDetailPage({ params }: { params: { id: string } }) {
-  const ticket = await getTicketById(params.id);
-  const { role } = await requireOrgRole(ticket.organization_id, ["owner", "admin", "member"]);
+  const ticket      = await getTicketById(params.id);
+  const { role }    = await requireOrgRole(ticket.organization_id, ["owner", "admin", "member"]);
   const comments    = await getTicketComments(params.id);
   const attachments = await getTicketAttachments(params.id);
+  const members     = await getOrgMembers(ticket.organization_id);
 
   const isAdmin = role === "owner" || role === "admin";
+  // assignee viene del join profiles!tickets_assigned_to_fkey
+  const assigneeName = (ticket as any).assignee?.full_name ?? null;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -54,26 +53,32 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
             <div className="flex gap-2 flex-wrap">
               <TicketStatusBadge status={ticket.status as TicketStatus} />
               <TicketPriorityBadge priority={ticket.priority as any} />
+              {assigneeName ? (
+                <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-[#d4a373]/15 text-[#c8935f]">
+                  \ud83d\udc64 {assigneeName}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-red-50 text-red-400">
+                  Sin asignar
+                </span>
+              )}
             </div>
             <h1 className="text-2xl font-bold habitta-title">{ticket.title}</h1>
             <p className="text-sm habitta-muted">
               Creado por{" "}
               <span className="font-semibold">
-                {ticket.profiles.full_name || "Desconocido"}
+                {(ticket as any).profiles?.full_name || "Desconocido"}
               </span>{" "}
               \u2022 #{ticket.id.split("-")[0]}
             </p>
           </div>
 
-          {/* Selector de estado \u2014 s\u00f3lo admin/owner */}
+          {/* Selector de estado (solo admin/owner) */}
           {isAdmin && (
             <form
               action={async (formData: FormData) => {
                 "use server";
-                await changeTicketStatusAction(
-                  ticket.id,
-                  formData.get("status") as TicketStatus
-                );
+                await changeTicketStatusAction(ticket.id, formData.get("status") as TicketStatus);
               }}
               className="flex items-center gap-2"
             >
@@ -86,10 +91,7 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
                   <option key={s} value={s}>{TICKET_STATUS_LABELS[s]}</option>
                 ))}
               </select>
-              <button
-                type="submit"
-                className="bg-[#d4a373] hover:bg-[#c8935f] text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
-              >
+              <button type="submit" className="bg-[#d4a373] hover:bg-[#c8935f] text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors">
                 Guardar
               </button>
             </form>
@@ -103,10 +105,10 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
 
         {/* Metadatos */}
         <div className="mt-6 flex flex-wrap gap-6 border-t border-[var(--border)] pt-4">
-          {ticket.assets && (
+          {(ticket as any).assets && (
             <div>
               <p className="text-xs font-semibold habitta-muted uppercase tracking-wide">Activo Afectado</p>
-              <p className="text-sm font-medium mt-1">{ticket.assets.name}</p>
+              <p className="text-sm font-medium mt-1">{(ticket as any).assets.name}</p>
             </div>
           )}
           {ticket.due_date && (
@@ -126,13 +128,7 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
               <p className="text-xs font-semibold habitta-muted uppercase tracking-wide">Adjuntos</p>
               <div className="flex gap-2 mt-1 flex-wrap">
                 {attachments.map((att) => (
-                  <a
-                    key={att.id}
-                    href={att.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="habitta-link text-sm"
-                  >
+                  <a key={att.id} href={att.file_url} target="_blank" rel="noopener noreferrer" className="habitta-link text-sm">
                     \ud83d\udcce {att.file_name}
                   </a>
                 ))}
@@ -141,6 +137,42 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
           )}
         </div>
       </div>
+
+      {/* -------- Selector de Responsable (solo admin/owner) -------- */}
+      {isAdmin && (
+        <div className="habitta-card p-5">
+          <h3 className="font-semibold text-sm text-[var(--foreground)] uppercase tracking-wide mb-3">
+            \ud83d\udc65 Responsable asignado
+          </h3>
+          <form
+            action={async (formData: FormData) => {
+              "use server";
+              await assignTicketAction(formData);
+            }}
+            className="flex items-center gap-3"
+          >
+            <input type="hidden" name="ticket_id" value={ticket.id} />
+            <select
+              name="assigned_to"
+              defaultValue={ticket.assigned_to ?? ""}
+              className="flex-1 text-sm border border-[var(--border)] rounded-md px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-[#d4a373]"
+            >
+              <option value="">\u2014 Sin asignar</option>
+              {members.map((m) => (
+                <option key={m.user_id} value={m.user_id}>
+                  {m.profiles?.full_name ?? m.user_id} ({m.role})
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              className="bg-[#d4a373] hover:bg-[#c8935f] text-white px-4 py-2 rounded-md text-sm font-medium transition-colors shrink-0"
+            >
+              Asignar
+            </button>
+          </form>
+        </div>
+      )}
 
       {/* -------- Respuesta Administrativa -------- */}
       {ticket.response ? (
@@ -156,7 +188,6 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
         )
       )}
 
-      {/* Formulario de respuesta administrativa (solo owner/admin) */}
       {isAdmin && (
         <div className="habitta-card p-5 space-y-3">
           <h3 className="font-semibold text-sm text-[var(--foreground)] uppercase tracking-wide">
@@ -177,10 +208,7 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
               placeholder="Escribe la respuesta oficial para el residente o solicitante..."
               className="w-full text-sm border border-[var(--border)] p-3 rounded-md outline-none focus:ring-2 focus:ring-[#d4a373] bg-white resize-none"
             />
-            <button
-              type="submit"
-              className="bg-[#d4a373] hover:bg-[#c8935f] text-white px-5 py-2 rounded-md font-medium text-sm transition-colors"
-            >
+            <button type="submit" className="bg-[#d4a373] hover:bg-[#c8935f] text-white px-5 py-2 rounded-md font-medium text-sm transition-colors">
               Guardar respuesta
             </button>
           </form>
@@ -192,9 +220,7 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
         <h3 className="font-bold text-lg habitta-title">Actualizaciones</h3>
         <div className="space-y-4">
           {comments.length === 0 ? (
-            <p className="text-sm habitta-muted italic">
-              No hay actualizaciones a\u00fan. S\u00e9 el primero en responder.
-            </p>
+            <p className="text-sm habitta-muted italic">No hay actualizaciones a\u00fan. S\u00e9 el primero en responder.</p>
           ) : (
             comments.map((c) => (
               <div key={c.id} className="habitta-card p-4 flex gap-3">
@@ -209,7 +235,6 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
             ))
           )}
         </div>
-
         <form
           action={async (formData) => {
             "use server";
@@ -225,10 +250,7 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
             placeholder="Escribe una actualizaci\u00f3n o respuesta..."
             className="w-full text-sm border border-[var(--border)] p-3 rounded-md outline-none focus:ring-2 focus:ring-[#d4a373] bg-white resize-none"
           />
-          <button
-            type="submit"
-            className="mt-3 bg-[var(--foreground)] text-[var(--background)] px-4 py-2 rounded-md font-medium text-sm hover:opacity-80 transition-opacity"
-          >
+          <button type="submit" className="mt-3 bg-[var(--foreground)] text-[var(--background)] px-4 py-2 rounded-md font-medium text-sm hover:opacity-80 transition-opacity">
             Enviar Respuesta
           </button>
         </form>

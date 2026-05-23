@@ -7,6 +7,7 @@ import {
   uploadTicketAttachment,
   updateTicketStatus,
   respondToTicket,
+  assignTicket,
   addTicketComment,
   getTicketOrganizationId,
 } from "../infrastructure/ticket.repository";
@@ -46,6 +47,7 @@ export async function createTicketAction(formData: FormData) {
     }
 
     revalidatePath("/tickets");
+    revalidatePath("/dashboard");
     return { success: true, ticketId: newTicket.id };
   } catch (error: any) {
     return { error: error.message || "Ocurri\u00f3 un error al crear el ticket" };
@@ -59,6 +61,8 @@ export async function changeTicketStatusAction(ticketId: string, status: TicketS
     await requireOrgRole(orgId, ["owner", "admin", "member"]);
     await updateTicketStatus(ticketId, status);
     revalidatePath(`/tickets/${ticketId}`);
+    revalidatePath("/tickets");
+    revalidatePath("/dashboard");
     return { success: true };
   } catch (e: any) {
     return { error: e.message };
@@ -67,16 +71,30 @@ export async function changeTicketStatusAction(ticketId: string, status: TicketS
 
 export async function respondToTicketAction(formData: FormData) {
   try {
-    const { user } = await requireOrgRole(
-      await getTicketOrganizationId(String(formData.get("ticket_id"))),
-      ["owner", "admin"]
-    );
     const ticketId = String(formData.get("ticket_id"));
+    const orgId    = await getTicketOrganizationId(ticketId);
+    await requireOrgRole(orgId, ["owner", "admin"]);
     const response = String(formData.get("response") ?? "").trim();
     if (!response) return { error: "La respuesta no puede estar vac\u00eda" };
-
     await respondToTicket(ticketId, response);
     revalidatePath(`/tickets/${ticketId}`);
+    return { success: true };
+  } catch (e: any) {
+    return { error: e.message };
+  }
+}
+
+export async function assignTicketAction(formData: FormData) {
+  try {
+    const ticketId   = String(formData.get("ticket_id"));
+    const assignedTo = formData.get("assigned_to");
+    const orgId      = await getTicketOrganizationId(ticketId);
+    await requireOrgRole(orgId, ["owner", "admin"]);
+    // Si el select es "" (sin asignar), pasamos null para limpiar
+    await assignTicket(ticketId, assignedTo && String(assignedTo) !== "" ? String(assignedTo) : null);
+    revalidatePath(`/tickets/${ticketId}`);
+    revalidatePath("/tickets");
+    revalidatePath("/dashboard");
     return { success: true };
   } catch (e: any) {
     return { error: e.message };

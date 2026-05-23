@@ -49,6 +49,7 @@ export interface Ticket extends TicketInsert {
   id:          string;
   creator_id:  string;
   category_id: string | null;
+  assigned_to: string | null;
   status:      TicketStatus;
   response:    string | null;
   due_date:    string | null;
