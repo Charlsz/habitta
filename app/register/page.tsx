@@ -4,10 +4,9 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { createClient } from "@/modules/core/infrastructure/supabase/client";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
+import { registerAction } from "@/modules/auth/application/auth.actions";
 
 // Esquema de registro
 const registerSchema = z
@@ -26,8 +25,6 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
-  const supabase = createClient();
 
   const {
     register,
@@ -39,46 +36,9 @@ export default function RegisterPage() {
 
   const onSubmit = async (data: RegisterFormData) => {
     setError(null);
-    try {
-      // 1. Crear el usuario en Supabase Auth
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-      });
-
-      if (signUpError) {
-        throw new Error(signUpError.message);
-      }
-
-      if (!authData.user) {
-        throw new Error("No se pudo crear el usuario");
-      }
-
-      // 2. Crear insert en public.profiles
-      // (Suponiendo que el schema lo permite sin restricciones de autenticación previas en insert)
-      const { error: profileError } = await supabase.from("profiles").insert([
-        {
-          id: authData.user.id,
-          full_name: data.fullName,
-        },
-      ]);
-
-      if (profileError) {
-        console.error("Error creating profile:", profileError);
-        // Fallback: Aún si falla la creación del perfil por RLS, el user en Auth existe. 
-        // Normalmente esto se maneja con triggers en DB, pero lo requeriste aquí.
-      }
-
-      // 3. Redirigir al dashboard
-      router.push("/dashboard");
-      router.refresh();
-      
-    } catch (err: any) {
-      setError(
-        err.message === "User already registered" || err.message.includes("already registered")
-          ? "El usuario ya se encuentra registrado. Por favor inicia sesión."
-          : err.message || "Ocurrió un error en el registro."
-      );
+    const response = await registerAction(data);
+    if (response?.error) {
+      setError(response.error);
     }
   };
 

@@ -13,6 +13,13 @@ export default function LoginPage() {
         </div>
         
         <LoginForm />
+
+        <p className="habitta-muted mt-8 text-center text-sm">
+          ¿No tienes cuenta?{" "}
+          <Link href="/register" className="habitta-link">
+            Créala aquí
+          </Link>
+        </p>
       </div>
     </div>
   );
