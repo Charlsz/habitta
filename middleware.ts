@@ -16,9 +16,7 @@ export async function middleware(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({
-            request,
-          })
+          supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           )
@@ -27,33 +25,30 @@ export async function middleware(request: NextRequest) {
     }
   )
 
+  // IMPORTANTE: getUser() refresca el token si esta por vencer
   const { data: { user } } = await supabase.auth.getUser()
 
   const pathname = request.nextUrl.pathname
   const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register')
   const isLanding = pathname === '/'
-  const isPublicRoute = isLanding || isAuthRoute
+  const isProtected = !isLanding && !isAuthRoute
 
   // Sin sesion en ruta protegida -> login
-  if (!user && !isPublicRoute) {
+  if (!user && isProtected) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  // Con sesion en login/register -> dashboard
+  // Con sesion en login o register -> dashboard (no tiene sentido volver a logarse)
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
 
-  // Con sesion en la landing -> dashboard (evita ver CTA de "Ingresar" estando logueado)
-  if (user && isLanding) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
-  }
+  // La landing (/) es visible para todos: logueados y no logueados.
+  // El Server Component app/page.tsx lee la sesion y pasa isLoggedIn + userData.
 
   return supabaseResponse
 }
