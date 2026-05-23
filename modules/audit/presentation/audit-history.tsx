@@ -1,6 +1,5 @@
 import type { AuditLog, AuditAction } from "../infrastructure/audit.repository";
 
-// Icono + descripci\u00f3n en espa\u00f1ol para cada acci\u00f3n
 const ACTION_META: Record<
   AuditAction,
   { icon: string; label: (log: AuditLog) => string; color: string }
@@ -59,7 +58,6 @@ const STATUS_ES: Record<string, string> = {
   closed:      "Cerrado",
 };
 
-/** Timestamp relativo en espa\u00f1ol */
 function relativeTime(iso: string): string {
   const diff  = Date.now() - new Date(iso).getTime();
   const mins  = Math.floor(diff / 60_000);
@@ -88,16 +86,19 @@ export function AuditHistory({ logs }: Props) {
       ) : (
         <ol className="relative border-l border-[var(--border)] ml-3 space-y-0">
           {logs.map((log) => {
-            const action    = log.action as AuditAction;
-            const meta      = ACTION_META[action] ?? ACTION_META.updated;
-            const label     = meta.label(log);
-            const who       = log.profiles?.full_name ?? "Sistema";
-            const oldStatus = String(log.old_value?.status ?? "");
-            const newStatus = String(log.new_value?.status ?? "");
+            const action     = log.action as AuditAction;
+            const meta       = ACTION_META[action] ?? ACTION_META.updated;
+            const label      = meta.label(log);
+            const who        = log.profiles?.full_name ?? "Sistema";
+            // Extraer valores como string — evita unknown en JSX
+            const oldStatus  = String(log.old_value?.status ?? "");
+            const newStatus  = String(log.new_value?.status ?? "");
+            const previewMsg = String(log.new_value?.message ?? log.new_value?.response ?? "");
+            const showStatus = action === "status_changed" && oldStatus.length > 0 && newStatus.length > 0;
+            const showPreview = (action === "commented" || action === "responded") && previewMsg.length > 0;
 
             return (
               <li key={log.id} className="ml-5 pb-5">
-                {/* Punto en la l\u00ednea */}
                 <span
                   className={`absolute -left-[11px] flex h-5 w-5 items-center justify-center rounded-full text-[11px] ring-2 ring-white ${meta.color}`}
                 >
@@ -115,8 +116,7 @@ export function AuditHistory({ logs }: Props) {
                     Por <span className="font-medium text-[var(--foreground)]">{who}</span>
                   </p>
 
-                  {/* Detalle de old/new para status_changed */}
-                  {action === "status_changed" && oldStatus && newStatus && (
+                  {showStatus && (
                     <div className="mt-2 flex gap-2 flex-wrap">
                       <span className="text-xs px-2 py-0.5 rounded-full bg-red-50 text-red-500">
                         {STATUS_ES[oldStatus] ?? oldStatus}
@@ -128,11 +128,9 @@ export function AuditHistory({ logs }: Props) {
                     </div>
                   )}
 
-                  {/* Preview del comentario o respuesta */}
-                  {(action === "commented" || action === "responded") &&
-                    (log.new_value?.message || log.new_value?.response) && (
+                  {showPreview && (
                     <p className="mt-2 text-xs text-[var(--muted)] italic line-clamp-2">
-                      \u201c{String(log.new_value.message ?? log.new_value.response)}\u201d
+                      \u201c{previewMsg}\u201d
                     </p>
                   )}
                 </div>
