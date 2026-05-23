@@ -1,6 +1,8 @@
 import { requireAuth } from "@/modules/auth/application/auth.guard";
 import { getAssetsByOrganization } from "@/modules/assets/infrastructure/asset.repository";
 import { getOrganizations } from "@/modules/organizations/infrastructure/organization.repository";
+import { ASSET_TYPE_LABELS, ASSET_TYPE_COLORS } from "@/modules/assets/domain/asset.schema";
+import type { AssetType } from "@/modules/assets/domain/asset.schema";
 import Link from "next/link";
 
 export default async function AssetsPage() {
@@ -54,21 +56,41 @@ export default async function AssetsPage() {
 
               {assets.length > 0 && (
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {assets.map((asset) => (
-                    <article key={asset.id} className="habitta-card-high p-5">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <h3 className="font-bold text-[var(--foreground)]">{asset.name}</h3>
-                          {asset.location && (
-                            <p className="habitta-muted text-sm mt-1">{asset.location}</p>
-                          )}
+                  {assets.map((asset) => {
+                    const typeKey = (asset.asset_type ?? "other") as AssetType;
+                    const typeLabel = ASSET_TYPE_LABELS[typeKey];
+                    const typeColor = ASSET_TYPE_COLORS[typeKey];
+                    return (
+                      <article key={asset.id} className="habitta-card-high p-5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h3 className="font-bold text-[var(--foreground)] truncate">{asset.name}</h3>
+                            {asset.code && (
+                              <p className="text-xs text-[var(--muted)] font-mono mt-0.5">{asset.code}</p>
+                            )}
+                            {asset.location && (
+                              <p className="habitta-muted text-sm mt-1">{asset.location}</p>
+                            )}
+                          </div>
+                          <div className="flex flex-col items-end gap-1.5 shrink-0">
+                            {/* Badge tipo de activo */}
+                            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${typeColor}`}>
+                              {typeLabel}
+                            </span>
+                            {/* Badge estado */}
+                            <span className="rounded-full bg-[var(--color-lima)] px-2 py-0.5 text-xs font-semibold text-[var(--foreground)]">
+                              {asset.status === "active" ? "Activo"
+                                : asset.status === "maintenance" ? "Mantenimiento"
+                                : "Inactivo"}
+                            </span>
+                          </div>
                         </div>
-                        <span className="rounded-full bg-[var(--color-lima)] px-2 py-1 text-xs font-semibold text-[var(--foreground)]">
-                          {asset.status}
-                        </span>
-                      </div>
-                    </article>
-                  ))}
+                        {asset.description && (
+                          <p className="habitta-muted text-sm mt-3 line-clamp-2">{asset.description}</p>
+                        )}
+                      </article>
+                    );
+                  })}
                 </div>
               )}
             </section>

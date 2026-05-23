@@ -25,11 +25,14 @@ export async function createAsset(asset: AssetInsert, userId: string): Promise<A
   const admin = getAdmin();
   const { data, error } = await admin.rpc("create_asset_for_user", {
     p_organization_id: asset.organization_id,
-    p_name: asset.name,
-    p_description: asset.description || null,
-    p_location: asset.location || null,
-    p_status: asset.status || "active",
-    p_creator_id: userId,
+    p_name:            asset.name,
+    p_asset_type:      asset.asset_type || "other",
+    p_description:     asset.description  || null,
+    p_location:        asset.location     || null,
+    p_status:          asset.status       || "active",
+    p_code:            asset.code         || null,
+    p_metadata:        asset.metadata     || null,
+    p_creator_id:      userId,
   });
   if (error) throw new Error(error.message);
   return data as Asset;
