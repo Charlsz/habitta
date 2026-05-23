@@ -17,6 +17,7 @@ import {
   createNotification,
   notifyOrgAdmins,
 } from "@/modules/notifications/infrastructure/notification.repository";
+import { createAuditLog } from "@/modules/audit/infrastructure/audit.repository";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 function getAdmin() {
@@ -59,7 +60,17 @@ export async function createTicketAction(formData: FormData) {
       await uploadTicketAttachment(file, orgId, newTicket.id, user.id);
     }
 
-    // Notificar a owners/admins de la org (fire-and-forget)
+    // Audit log (fire-and-forget)
+    createAuditLog({
+      orgId,
+      userId:     user.id,
+      entityType: "ticket",
+      entityId:   newTicket.id,
+      action:     "created",
+      newValue:   { title: parsed.data.title, priority: parsed.data.priority, status: "open" },
+    });
+
+    // Notificaciones (fire-and-forget)
     notifyOrgAdmins(
       orgId,
       `\ud83c\udfab Nuevo ticket: ${parsed.data.title}`,
@@ -77,12 +88,36 @@ export async function createTicketAction(formData: FormData) {
 
 export async function changeTicketStatusAction(ticketId: string, status: TicketStatus) {
   try {
-    await requireAuth();
+    const user  = await requireAuth();
     const orgId = await getTicketOrganizationId(ticketId);
     await requireOrgRole(orgId, ["owner", "admin", "member"]);
+
+    // Capturar estado anterior antes de actualizar
+    let previousStatus: string | null = null;
+    try {
+      const admin = getAdmin();
+      const { data: t } = await admin
+        .from("tickets")
+        .select("status")
+        .eq("id", ticketId)
+        .single();
+      previousStatus = t?.status ?? null;
+    } catch { /* continuar */ }
+
     await updateTicketStatus(ticketId, status);
 
-    // Si se resuelve, notificar al creador del ticket
+    // Audit log
+    createAuditLog({
+      orgId,
+      userId:     user.id,
+      entityType: "ticket",
+      entityId:   ticketId,
+      action:     "status_changed",
+      oldValue:   previousStatus ? { status: previousStatus } : null,
+      newValue:   { status },
+    });
+
+    // Notificaci\u00f3n al creador si se resuelve
     if (status === "resolved") {
       try {
         const admin = getAdmin();
@@ -100,9 +135,7 @@ export async function changeTicketStatusAction(ticketId: string, status: TicketS
             "success"
           ).catch(() => {});
         }
-      } catch {
-        // No bloquear si falla la notificaci\u00f3n
-      }
+      } catch { /* continuar */ }
     }
 
     revalidatePath(`/tickets/${ticketId}`);
@@ -116,12 +149,25 @@ export async function changeTicketStatusAction(ticketId: string, status: TicketS
 
 export async function respondToTicketAction(formData: FormData) {
   try {
+    const user     = await requireAuth();
     const ticketId = String(formData.get("ticket_id"));
     const orgId    = await getTicketOrganizationId(ticketId);
     await requireOrgRole(orgId, ["owner", "admin"]);
     const response = String(formData.get("response") ?? "").trim();
     if (!response) return { error: "La respuesta no puede estar vac\u00eda" };
+
     await respondToTicket(ticketId, response);
+
+    // Audit log
+    createAuditLog({
+      orgId,
+      userId:     user.id,
+      entityType: "ticket",
+      entityId:   ticketId,
+      action:     "responded",
+      newValue:   { response: response.substring(0, 200) },
+    });
+
     revalidatePath(`/tickets/${ticketId}`);
     return { success: true };
   } catch (e: any) {
@@ -131,11 +177,25 @@ export async function respondToTicketAction(formData: FormData) {
 
 export async function assignTicketAction(formData: FormData) {
   try {
+    const user       = await requireAuth();
     const ticketId   = String(formData.get("ticket_id"));
     const assignedTo = formData.get("assigned_to");
     const orgId      = await getTicketOrganizationId(ticketId);
     await requireOrgRole(orgId, ["owner", "admin"]);
-    await assignTicket(ticketId, assignedTo && String(assignedTo) !== "" ? String(assignedTo) : null);
+
+    const newAssignee = assignedTo && String(assignedTo) !== "" ? String(assignedTo) : null;
+    await assignTicket(ticketId, newAssignee);
+
+    // Audit log
+    createAuditLog({
+      orgId,
+      userId:     user.id,
+      entityType: "ticket",
+      entityId:   ticketId,
+      action:     "assigned",
+      newValue:   { assigned_to: newAssignee },
+    });
+
     revalidatePath(`/tickets/${ticketId}`);
     revalidatePath("/tickets");
     revalidatePath("/dashboard");
@@ -157,6 +217,17 @@ export async function addTicketCommentAction(formData: FormData) {
     await requireOrgRole(orgId, ["owner", "admin", "member"]);
 
     await addTicketComment(ticketId, user.id, message);
+
+    // Audit log
+    createAuditLog({
+      orgId,
+      userId:     user.id,
+      entityType: "ticket",
+      entityId:   ticketId,
+      action:     "commented",
+      newValue:   { message: message.substring(0, 200) },
+    });
+
     revalidatePath(`/tickets/${ticketId}`);
     return { success: true };
   } catch (e: any) {
