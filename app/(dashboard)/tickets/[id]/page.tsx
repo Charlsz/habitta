@@ -14,8 +14,15 @@ import {
 import { requireOrgRole } from "@/modules/auth/application/auth.guard";
 import { getAuditLogs } from "@/modules/audit/infrastructure/audit.repository";
 import { AuditHistory } from "@/modules/audit/presentation/audit-history";
+import { TelegramReplyForm } from "@/modules/telegram/presentation/telegram-reply-form";
 import Link from "next/link";
+import { createClient } from "@supabase/supabase-js";
 import { TicketStatus, TICKET_STATUS_LABELS } from "@/modules/tickets/domain/ticket.schema";
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 const ALL_STATUSES: TicketStatus[] = [
   "open", "in_review", "in_progress", "on_hold", "resolved", "rejected", "closed",
@@ -26,6 +33,15 @@ function formatDate(iso: string | null | undefined) {
   return new Date(iso).toLocaleDateString("es-CO", {
     year: "numeric", month: "long", day: "numeric",
   });
+}
+
+async function getTelegramSession(sessionId: string) {
+  const { data } = await supabaseAdmin
+    .from("chat_sessions")
+    .select("display_name, telegram_username")
+    .eq("id", sessionId)
+    .single();
+  return data;
 }
 
 export default async function TicketDetailPage({
@@ -46,6 +62,11 @@ export default async function TicketDetailPage({
 
   const isAdmin      = role === "owner" || role === "admin";
   const assigneeName = (ticket as any).assignee?.full_name ?? null;
+  const isTelegramTicket = (ticket as any).source === "telegram" && !!(ticket as any).telegram_session_id;
+
+  const telegramSession = isTelegramTicket && isAdmin
+    ? await getTelegramSession((ticket as any).telegram_session_id)
+    : null;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -60,6 +81,11 @@ export default async function TicketDetailPage({
             <div className="flex gap-2 flex-wrap">
               <TicketStatusBadge status={ticket.status as TicketStatus} />
               <TicketPriorityBadge priority={ticket.priority as any} />
+              {isTelegramTicket && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
+                  📲 Telegram
+                </span>
+              )}
               {assigneeName ? (
                 <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-[#d4a373]/15 text-[#c8935f]">
                   👤 {assigneeName}
@@ -74,7 +100,9 @@ export default async function TicketDetailPage({
             <p className="text-sm habitta-muted">
               Creado por{" "}
               <span className="font-semibold">
-                {(ticket as any).profiles?.full_name || "Desconocido"}
+                {isTelegramTicket
+                  ? (telegramSession?.display_name ?? "Residente vía Telegram")
+                  : ((ticket as any).profiles?.full_name || "Desconocido")}
               </span>{" "}
               • #{ticket.id.split("-")[0]}
             </p>
@@ -190,7 +218,7 @@ export default async function TicketDetailPage({
       {/* -------- Respuesta Administrativa -------- */}
       {ticket.response ? (
         <div className="rounded-xl border border-[#d4a373]/40 bg-[#d4a373]/8 p-5 space-y-2">
-          <p className="text-xs font-bold uppercase tracking-widest text-[#c8935f]">📬 Respuesta del administrador</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-[#c8935f]">📨 Respuesta del administrador</p>
           <p className="text-sm text-[var(--foreground)] whitespace-pre-wrap">{ticket.response}</p>
         </div>
       ) : (
@@ -229,6 +257,15 @@ export default async function TicketDetailPage({
             </button>
           </form>
         </div>
+      )}
+
+      {/* -------- Responder por Telegram (solo si el ticket vino de Telegram) -------- */}
+      {isAdmin && isTelegramTicket && telegramSession && (
+        <TelegramReplyForm
+          ticketId={ticket.id}
+          residentName={telegramSession.display_name ?? "Residente"}
+          residentUsername={telegramSession.telegram_username}
+        />
       )}
 
       {/* -------- Actualizaciones (comentarios) -------- */}
