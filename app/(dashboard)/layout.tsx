@@ -3,32 +3,34 @@ import { requireAuth } from "@/modules/auth/application/auth.guard";
 import Link from "next/link";
 import { ReactNode } from "react";
 import { Button } from "@/modules/core/components";
+import { NotificationBell } from "@/modules/notifications/presentation/notification-bell";
+import {
+  getUnreadNotifications,
+  getUnreadCount,
+} from "@/modules/notifications/infrastructure/notification.repository";
 
 interface NavItem {
-  href: string;
+  href:  string;
   label: string;
-  dot: string;
+  dot:   string;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard",     label: "Dashboard",       dot: "#d4a373" },
-  { href: "/organizations", label: "Organizaciones",  dot: "#7CAE7A" },
-  { href: "/assets",        label: "Activos",          dot: "#6B9AB8" },
-  { href: "/tickets",       label: "Tickets",          dot: "#E07B54" },
-  { href: "/scheduling",    label: "Agenda",           dot: "#9B8BB4" },
+  { href: "/dashboard",     label: "Dashboard",      dot: "#d4a373" },
+  { href: "/organizations", label: "Organizaciones", dot: "#7CAE7A" },
+  { href: "/assets",        label: "Activos",         dot: "#6B9AB8" },
+  { href: "/tickets",       label: "Tickets",         dot: "#E07B54" },
+  { href: "/scheduling",    label: "Agenda",          dot: "#9B8BB4" },
 ];
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
-  // Proteccion a nivel de layout: si no hay sesion, redirige al login
   const user = await requireAuth();
 
-  // Nombre visible: full_name del metadata, o email como fallback
   const displayName =
     (user.user_metadata?.full_name as string | undefined) ||
     user.email ||
     "Usuario";
 
-  // Iniciales para el avatar
   const initials = displayName
     .split(" ")
     .map((w: string) => w[0])
@@ -36,13 +38,17 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     .join("")
     .toUpperCase();
 
+  // Cargar notificaciones en paralelo (falla silenciosa si RLS rechaza)
+  const [notifications, unreadCount] = await Promise.all([
+    getUnreadNotifications(5).catch(() => []),
+    getUnreadCount().catch(() => 0),
+  ]);
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[var(--background)] text-[var(--foreground)]">
 
       {/* Sidebar */}
       <aside className="w-[260px] shrink-0 bg-[var(--sidebar-bg)] border-r border-[var(--border)] flex flex-col">
-
-        {/* Logo */}
         <div className="h-16 flex items-center px-6">
           <span
             className="font-serif font-bold text-2xl tracking-tight text-[var(--foreground)]"
@@ -52,7 +58,6 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           </span>
         </div>
 
-        {/* Navegacion */}
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {NAV_ITEMS.map(({ href, label, dot }) => (
             <Link
@@ -74,11 +79,10 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           ))}
         </nav>
 
-        {/* Footer del sidebar */}
         <div className="px-3 py-4 border-t border-[var(--border)]">
           <form action={logoutAction}>
             <Button variant="ghost" size="sm" type="submit" className="w-full justify-start">
-              Cerrar sesión
+              Cerrar sesi\u00f3n
             </Button>
           </form>
         </div>
@@ -86,20 +90,22 @@ export default async function DashboardLayout({ children }: { children: ReactNod
 
       {/* Contenido principal */}
       <div className="flex-1 flex flex-col overflow-hidden">
-
-        {/* Header */}
         <header
           className={[
             "h-16 shrink-0 bg-[var(--background)] border-b border-[var(--border)]",
             "flex items-center px-8 justify-end gap-3",
           ].join(" ")}
         >
-          {/* Nombre del usuario */}
+          {/* Campana de notificaciones */}
+          <NotificationBell
+            unreadCount={unreadCount}
+            notifications={notifications}
+          />
+
           <span className="text-sm font-medium text-[var(--muted)] hidden sm:block">
             {displayName}
           </span>
 
-          {/* Avatar con iniciales */}
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
             style={{ backgroundColor: "#d4a373" }}
@@ -109,7 +115,6 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           </div>
         </header>
 
-        {/* Pagina */}
         <main className="flex-1 overflow-auto p-8">
           {children}
         </main>

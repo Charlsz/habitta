@@ -13,6 +13,19 @@ import {
 } from "../infrastructure/ticket.repository";
 import { requireAuth, requireOrgRole } from "@/modules/auth/application/auth.guard";
 import { assetBelongsToOrganization } from "@/modules/assets/infrastructure/asset.repository";
+import {
+  createNotification,
+  notifyOrgAdmins,
+} from "@/modules/notifications/infrastructure/notification.repository";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
+
+function getAdmin() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+}
 
 export async function createTicketAction(formData: FormData) {
   try {
@@ -22,11 +35,11 @@ export async function createTicketAction(formData: FormData) {
 
     const data = {
       organization_id: orgId,
-      asset_id:    rawData.asset_id    ? String(rawData.asset_id)    : undefined,
+      asset_id:    rawData.asset_id  ? String(rawData.asset_id)  : undefined,
       title:       String(rawData.title),
       description: String(rawData.description),
       priority:    String(rawData.priority),
-      due_date:    rawData.due_date    ? String(rawData.due_date)    : undefined,
+      due_date:    rawData.due_date  ? String(rawData.due_date)  : undefined,
     };
 
     const parsed = ticketSchema.safeParse(data);
@@ -46,6 +59,14 @@ export async function createTicketAction(formData: FormData) {
       await uploadTicketAttachment(file, orgId, newTicket.id, user.id);
     }
 
+    // Notificar a owners/admins de la org (fire-and-forget)
+    notifyOrgAdmins(
+      orgId,
+      `\ud83c\udfab Nuevo ticket: ${parsed.data.title}`,
+      `Creado por un miembro. Revisa los tickets pendientes.`,
+      "info"
+    ).catch(() => {});
+
     revalidatePath("/tickets");
     revalidatePath("/dashboard");
     return { success: true, ticketId: newTicket.id };
@@ -60,6 +81,30 @@ export async function changeTicketStatusAction(ticketId: string, status: TicketS
     const orgId = await getTicketOrganizationId(ticketId);
     await requireOrgRole(orgId, ["owner", "admin", "member"]);
     await updateTicketStatus(ticketId, status);
+
+    // Si se resuelve, notificar al creador del ticket
+    if (status === "resolved") {
+      try {
+        const admin = getAdmin();
+        const { data: ticket } = await admin
+          .from("tickets")
+          .select("creator_id, title")
+          .eq("id", ticketId)
+          .single();
+        if (ticket) {
+          createNotification(
+            orgId,
+            ticket.creator_id,
+            "\u2705 Tu ticket fue resuelto",
+            `"${ticket.title}" ha sido marcado como resuelto.`,
+            "success"
+          ).catch(() => {});
+        }
+      } catch {
+        // No bloquear si falla la notificaci\u00f3n
+      }
+    }
+
     revalidatePath(`/tickets/${ticketId}`);
     revalidatePath("/tickets");
     revalidatePath("/dashboard");
@@ -90,7 +135,6 @@ export async function assignTicketAction(formData: FormData) {
     const assignedTo = formData.get("assigned_to");
     const orgId      = await getTicketOrganizationId(ticketId);
     await requireOrgRole(orgId, ["owner", "admin"]);
-    // Si el select es "" (sin asignar), pasamos null para limpiar
     await assignTicket(ticketId, assignedTo && String(assignedTo) !== "" ? String(assignedTo) : null);
     revalidatePath(`/tickets/${ticketId}`);
     revalidatePath("/tickets");
