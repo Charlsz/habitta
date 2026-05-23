@@ -88,10 +88,12 @@ export function AuditHistory({ logs }: Props) {
       ) : (
         <ol className="relative border-l border-[var(--border)] ml-3 space-y-0">
           {logs.map((log) => {
-            const action = log.action as AuditAction;
-            const meta   = ACTION_META[action] ?? ACTION_META.updated;
-            const label  = meta.label(log);
-            const who    = log.profiles?.full_name ?? "Sistema";
+            const action    = log.action as AuditAction;
+            const meta      = ACTION_META[action] ?? ACTION_META.updated;
+            const label     = meta.label(log);
+            const who       = log.profiles?.full_name ?? "Sistema";
+            const oldStatus = String(log.old_value?.status ?? "");
+            const newStatus = String(log.new_value?.status ?? "");
 
             return (
               <li key={log.id} className="ml-5 pb-5">
@@ -114,14 +116,14 @@ export function AuditHistory({ logs }: Props) {
                   </p>
 
                   {/* Detalle de old/new para status_changed */}
-                  {action === "status_changed" && log.old_value && log.new_value && (
+                  {action === "status_changed" && oldStatus && newStatus && (
                     <div className="mt-2 flex gap-2 flex-wrap">
                       <span className="text-xs px-2 py-0.5 rounded-full bg-red-50 text-red-500">
-                        {STATUS_ES[(log.old_value.status as string)] ?? log.old_value.status as string}
+                        {STATUS_ES[oldStatus] ?? oldStatus}
                       </span>
                       <span className="text-xs text-[var(--muted)]">\u2192</span>
                       <span className="text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-600">
-                        {STATUS_ES[(log.new_value.status as string)] ?? log.new_value.status as string}
+                        {STATUS_ES[newStatus] ?? newStatus}
                       </span>
                     </div>
                   )}
@@ -130,7 +132,7 @@ export function AuditHistory({ logs }: Props) {
                   {(action === "commented" || action === "responded") &&
                     (log.new_value?.message || log.new_value?.response) && (
                     <p className="mt-2 text-xs text-[var(--muted)] italic line-clamp-2">
-                      \u201c{(log.new_value.message ?? log.new_value.response) as string}\u201d
+                      \u201c{String(log.new_value.message ?? log.new_value.response)}\u201d
                     </p>
                   )}
                 </div>
