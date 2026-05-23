@@ -43,7 +43,7 @@ export const assetSchema = z.object({
   description:     z.string().optional().nullable(),
   location:        z.string().optional().nullable(),
   status:          AssetStatusEnum.default("active"),
-  metadata:        z.record(z.unknown()).optional().nullable(),
+  metadata:        z.record(z.string(), z.unknown()).optional().nullable(),
 });
 
 export type AssetStatus = z.infer<typeof AssetStatusEnum>;
