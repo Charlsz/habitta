@@ -1,3 +1,4 @@
+import { logoutAction } from "@/modules/auth/application/auth.actions";
 import Link from "next/link";
 import { ReactNode } from "react";
 
@@ -21,8 +22,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="h-16 bg-white border-b flex items-center px-6 justify-end">
-          <div className="text-sm font-medium">Perfil ↓</div>
+        <header className="h-16 bg-white border-b flex items-center px-6 justify-end gap-4">
+          <div className="text-sm font-medium">Perfil</div>
+          <form action={logoutAction}>
+            <button className="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-md font-medium text-gray-700">
+              Cerrar Sesión
+            </button>
+          </form>
         </header>
 
         {/* Page content */}
