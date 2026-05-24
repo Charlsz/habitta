@@ -4,6 +4,13 @@ import { revalidatePath } from 'next/cache';
 import { requireOrgRole } from '@/modules/auth/application/auth.guard';
 import { createClientRecord, updateClientRecord, deleteClientRecord } from '../infrastructure/client.repository';
 import type { CreateClientInput, ClientRelationType, DocumentType } from '../domain/client.types';
+import { notifyOrgAdmins } from '@/modules/notifications/infrastructure/notification.repository';
+
+const RELATION_LABEL: Record<string, string> = {
+  owner:    'Propietario',
+  resident: 'Residente',
+  tenant:   'Arrendatario',
+};
 
 function buildMetadata(formData: FormData) {
   const tower   = (formData.get('tower')   as string) || undefined;
@@ -40,6 +47,20 @@ export async function createClientAction(
     };
 
     await createClientRecord(input);
+
+    // — Notificar a admins del nuevo cliente —
+    const relLabel = RELATION_LABEL[input.relation_type ?? 'resident'] ?? input.relation_type;
+    notifyOrgAdmins(
+      organizationId,
+      `👤 Nuevo cliente registrado: ${input.full_name}`,
+      `Tipo: ${relLabel}${
+        input.metadata && (input.metadata as any).unit
+          ? ` · Unidad ${(input.metadata as any).unit}`
+          : ''
+      }. Revisa su perfil para completar la información.`,
+      'success'
+    ).catch(() => {});
+
     revalidatePath('/clients');
     revalidatePath('/dashboard');
     return {};
@@ -59,8 +80,11 @@ export async function updateClientAction(
   try {
     await requireOrgRole(organizationId, ['admin', 'owner']);
 
+    const moveOutDate = (formData.get('move_out_date') as string) || null;
+    const fullName    = (formData.get('full_name')     as string)?.trim();
+
     const input: Partial<CreateClientInput> = {
-      full_name:       (formData.get('full_name')      as string)?.trim(),
+      full_name:       fullName,
       email:           (formData.get('email')          as string) || null,
       phone:           (formData.get('phone')          as string) || null,
       document_type:   (formData.get('document_type')  as DocumentType) || null,
@@ -68,12 +92,23 @@ export async function updateClientAction(
       asset_id:        (formData.get('asset_id')        as string) || null,
       relation_type:   (formData.get('relation_type')   as ClientRelationType) || 'resident',
       move_in_date:    (formData.get('move_in_date')    as string) || null,
-      move_out_date:   (formData.get('move_out_date')   as string) || null,
+      move_out_date:   moveOutDate,
       notes:           (formData.get('notes')           as string) || null,
       metadata:        buildMetadata(formData),
     };
 
     await updateClientRecord(id, input);
+
+    // — Notificar si se registra una fecha de salida —
+    if (moveOutDate) {
+      notifyOrgAdmins(
+        organizationId,
+        `🚪 Salida registrada: ${fullName ?? 'Cliente'}`,
+        `Se registró la salida con fecha ${moveOutDate}. Verifica la unidad y actualiza el estado del activo.`,
+        'warning'
+      ).catch(() => {});
+    }
+
     revalidatePath('/clients');
     revalidatePath(`/clients/${id}`);
     return {};
