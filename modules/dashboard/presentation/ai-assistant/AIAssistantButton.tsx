@@ -12,68 +12,90 @@ interface Props {
   initialContext: any;
 }
 
-/** Lee el parámetro ?org= de la URL del cliente */
 function getOrgIdFromURL(): string | undefined {
   if (typeof window === "undefined") return undefined;
   return new URLSearchParams(window.location.search).get("org") ?? undefined;
 }
 
 export function AIAssistantButton({ initialContext }: Props) {
-  const [open, setOpen]           = useState(false);
-  const [messages, setMessages]   = useState<Message[]>([]);
-  const [input, setInput]         = useState("");
-  const [context, setContext]     = useState<any>(initialContext);
+  const [open, setOpen]             = useState(false);
+  const [messages, setMessages]     = useState<Message[]>([]);
+  const [input, setInput]           = useState("");
+  const [context, setContext]       = useState<any>(initialContext);
   const [loadingCtx, setLoadingCtx] = useState(false);
   const [isPending, startTransition] = useTransition();
   const bottomRef  = useRef<HTMLDivElement>(null);
   const inputRef   = useRef<HTMLInputElement>(null);
+  // Guardamos el orgId actual para detectar cambios
+  const trackedOrgId = useRef<string | undefined>(context?.orgId);
 
-  /**
-   * Cada vez que se abre el panel, re-carga el contexto con el org activo
-   * según la URL del cliente en ese momento.
-   * Esto garantiza que si el admin cambió de org, el asistente lo refleje.
-   */
-  const refreshContext = useCallback(async () => {
-    const orgId = getOrgIdFromURL();
-    // Solo recargar si el org cambió respecto al contexto actual
-    if (orgId && orgId === context?.orgId) return;
+  // ── Carga contexto para un orgId concreto ───────────────────────────────
+  const loadContext = useCallback(async (orgId?: string, announce = false) => {
     setLoadingCtx(true);
     try {
       const fresh = await getOrganizationAIContext(orgId);
-      if (fresh) {
-        setContext(fresh);
-        // Resetear el chat cuando cambia la org
-        setMessages([
+      if (!fresh) return;
+      setContext(fresh);
+      trackedOrgId.current = fresh.orgId;
+      if (announce) {
+        // Notifica dentro del chat que se cambió la org, sin borrar el historial
+        setMessages((prev) => [
+          ...prev,
           {
             role: "assistant",
-            content: `¡Hola! Ahora estoy analizando **${fresh.org?.name}**. ¿En qué te puedo ayudar?`,
+            content: `🔄 Contexto actualizado: ahora analizo **${fresh.org?.name}**. Puedes seguir preguntando.`,
           },
         ]);
       }
     } finally {
       setLoadingCtx(false);
     }
-  }, [context?.orgId]);
+  }, []);
 
+  // ── Al abrir: carga contexto inicial y pon el saludo si no hay historial ───
   useEffect(() => {
-    if (open) {
-      setTimeout(() => inputRef.current?.focus(), 100);
-      refreshContext();
-      if (messages.length === 0) {
-        setMessages([
-          {
-            role: "assistant",
-            content: `¡Hola! Soy tu asistente de análisis para **${context?.org?.name ?? "tu organización"}**. Puedo responder preguntas sobre tus tickets, prioridades y operaciones. ¿En qué te puedo ayudar?`,
-          },
-        ]);
-      }
+    if (!open) return;
+    setTimeout(() => inputRef.current?.focus(), 100);
+
+    const urlOrgId = getOrgIdFromURL();
+    if (urlOrgId !== trackedOrgId.current) {
+      // La org ya era distinta al abrir
+      loadContext(urlOrgId, messages.length > 0);
+    } else if (messages.length === 0) {
+      // Primera apertura: saludo
+      setMessages([
+        {
+          role: "assistant",
+          content: `¡Hola! Soy tu asistente de análisis para **${
+            context?.org?.name ?? "tu organización"
+          }**. Puedo responder preguntas sobre clientes, tickets, agenda y más. ¿En qué te puedo ayudar?`,
+        },
+      ]);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  // ── Polling: detecta cambio de ?org= mientras el panel está abierto ──────
+  useEffect(() => {
+    if (!open) return;
+
+    const interval = setInterval(() => {
+      const urlOrgId = getOrgIdFromURL();
+      if (urlOrgId && urlOrgId !== trackedOrgId.current) {
+        // La org cambió — recargar contexto y avisar en el chat
+        loadContext(urlOrgId, true);
+      }
+    }, 1500); // cada 1.5 s, costo mínimo
+
+    return () => clearInterval(interval);
+  }, [open, loadContext]);
+
+  // ── Scroll automático ────────────────────────────────────────────────────
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isPending]);
 
+  // ── Enviar mensaje ───────────────────────────────────────────────────────
   const handleSend = () => {
     const text = input.trim();
     if (!text || isPending) return;
@@ -114,6 +136,7 @@ export function AIAssistantButton({ initialContext }: Props) {
       {/* Panel */}
       {open && (
         <div className="fixed bottom-24 right-6 z-50 w-[380px] max-w-[calc(100vw-2rem)] h-[520px] flex flex-col rounded-2xl shadow-2xl border border-[var(--border)] bg-[var(--background)] overflow-hidden">
+
           {/* Header */}
           <div
             className="px-4 py-3 flex items-center gap-2 shrink-0"
@@ -123,7 +146,7 @@ export function AIAssistantButton({ initialContext }: Props) {
             <div className="flex-1 min-w-0">
               <p className="text-white font-semibold text-sm leading-tight">Asistente Habitta</p>
               <p className="text-white/80 text-xs truncate">
-                {loadingCtx ? "Cargando contexto..." : (context?.org?.name ?? "Tu organización")}
+                {loadingCtx ? "Actualizando contexto…" : (context?.org?.name ?? "Tu organización")}
               </p>
             </div>
             {loadingCtx && (
@@ -134,12 +157,7 @@ export function AIAssistantButton({ initialContext }: Props) {
           {/* Mensajes */}
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
             {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={`flex ${
-                  msg.role === "user" ? "justify-end" : "justify-start"
-                }`}
-              >
+              <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                 <div
                   className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
                     msg.role === "user"
@@ -173,7 +191,7 @@ export function AIAssistantButton({ initialContext }: Props) {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder="Pregunta sobre tus tickets..."
+              placeholder="Pregunta sobre clientes, tickets, agenda…"
               disabled={isPending || loadingCtx}
               className="flex-1 text-sm px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:ring-1 focus:ring-[#d4a373] disabled:opacity-50"
             />
