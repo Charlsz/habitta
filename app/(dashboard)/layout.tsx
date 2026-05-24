@@ -1,13 +1,14 @@
 import { logoutAction } from "@/modules/auth/application/auth.actions";
 import { requireAuth } from "@/modules/auth/application/auth.guard";
 import Link from "next/link";
-import { ReactNode } from "react";
+import { ReactNode, Suspense } from "react";
 import { Button } from "@/modules/core/components";
 import { NotificationBell } from "@/modules/notifications/presentation/notification-bell";
 import {
   getUnreadNotifications,
   getUnreadCount,
 } from "@/modules/notifications/infrastructure/notification.repository";
+import { AIAssistantLoader } from "@/modules/dashboard/presentation/ai-assistant/AIAssistantLoader";
 
 interface NavItem {
   href:  string;
@@ -119,6 +120,11 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           {children}
         </main>
       </div>
+
+      {/* Asistente IA flotante */}
+      <Suspense fallback={null}>
+        <AIAssistantLoader />
+      </Suspense>
     </div>
   );
 }
