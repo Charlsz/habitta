@@ -130,7 +130,15 @@ export default function LandingClient({ isLoggedIn, displayName, initials }: Pro
   const primaryLabel = isLoggedIn ? "Ir a mi panel" : "Probar gratis";
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#fefae0", color: "#2C2416", fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}>
+    <div className="relative min-h-screen overflow-hidden isolate" style={{ backgroundColor: "#fefae0", color: "#2C2416", fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}>
+      <div aria-hidden="true" style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0, overflow: "hidden" }}>
+        <div style={{ position: "absolute", inset: "-12% -8% auto auto", width: "30rem", height: "30rem", borderRadius: "50%", background: "radial-gradient(circle, rgba(212,163,115,0.28) 0%, rgba(212,163,115,0.08) 40%, transparent 72%)", filter: "blur(24px)" }} />
+        <div style={{ position: "absolute", inset: "8% auto auto -10%", width: "26rem", height: "26rem", borderRadius: "50%", background: "radial-gradient(circle, rgba(122,202,122,0.18) 0%, rgba(122,202,122,0.06) 42%, transparent 74%)", filter: "blur(26px)" }} />
+        <div style={{ position: "absolute", inset: "auto -8% 12% auto", width: "24rem", height: "24rem", borderRadius: "50%", background: "radial-gradient(circle, rgba(107,154,184,0.14) 0%, rgba(107,154,184,0.05) 44%, transparent 76%)", filter: "blur(28px)" }} />
+        <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(rgba(44,36,22,0.035) 1px, transparent 1px)", backgroundSize: "20px 20px", opacity: 0.45 }} />
+      </div>
+
+      <div style={{ position: "relative", zIndex: 1 }}>
 
       {/* ── NAVBAR ── */}
       <header style={{ position: "sticky", top: 0, zIndex: 50, backgroundColor: "#fefae0", borderBottom: "1px solid #E8DECE" }}>
@@ -219,8 +227,9 @@ export default function LandingClient({ isLoggedIn, displayName, initials }: Pro
       <main>
 
         {/* ── HERO ── */}
-        <section style={{ padding: "5rem 1.5rem 6rem" }}>
-          <div className="mx-auto max-w-4xl text-center">
+        <section style={{ position: "relative", padding: "5rem 1.5rem 6rem", overflow: "hidden" }}>
+          <div aria-hidden="true" style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(254,250,224,0.72), rgba(254,250,224,0.78)), url('/background.jpg')", backgroundPosition: "center", backgroundSize: "cover", backgroundRepeat: "no-repeat", opacity: 1, zIndex: 0 }} />
+          <div className="mx-auto max-w-4xl text-center" style={{ position: "relative", zIndex: 1 }}>
 
             <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", backgroundColor: "#faedcd", border: "1px solid #E8DECE", borderRadius: "999px", padding: "0.25rem 0.875rem", fontSize: "0.8125rem", fontWeight: 600, color: "#7A6A52", marginBottom: "2rem" }}>
               <Sparkles size={13} style={{ color: "#d4a373" }} />
@@ -233,10 +242,10 @@ export default function LandingClient({ isLoggedIn, displayName, initials }: Pro
               <span style={{ color: "#d4a373" }}>un solo lugar</span>
             </h1>
 
-            <p style={{ fontSize: "1.125rem", lineHeight: 1.7, color: "#7A6A52", maxWidth: "40rem", margin: "0 auto 2.5rem" }}>
+            <div style={{ fontSize: "1.125rem", lineHeight: 1.7, color: "#7A6A52", maxWidth: "40rem", margin: "0 auto 2.5rem" }}>
               Habitta es la plataforma que te ayuda a recibir solicitudes, resolver problemas, enviar recordatorios de pago y generar documentos.
               <p>¡Todo desde un solo lugar, sin enredos!</p>
-            </p>
+            </div>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link href={primaryHref}
@@ -259,8 +268,8 @@ export default function LandingClient({ isLoggedIn, displayName, initials }: Pro
           </div>
 
           {/* Mockup */}
-          <div className="mx-auto mt-20" style={{ maxWidth: "56rem", backgroundColor: "#faedcd", border: "1px solid #E8DECE", borderRadius: "16px", padding: "1rem", boxShadow: "0 8px 32px rgba(44,36,22,0.10)" }}>
-            <div style={{ backgroundColor: "#e9edc9", borderRadius: "10px", overflow: "hidden" }}>
+          <div className="mx-auto mt-20" style={{ position: "relative", zIndex: 1, maxWidth: "56rem", backgroundColor: "rgba(250,237,205,0.84)", border: "1px solid rgba(232,222,206,0.9)", borderRadius: "16px", padding: "1rem", boxShadow: "0 8px 32px rgba(44,36,22,0.10)", backdropFilter: "blur(4px)" }}>
+            <div style={{ backgroundColor: "rgba(233,237,201,0.86)", borderRadius: "10px", overflow: "hidden" }}>
               <div style={{ height: 40, backgroundColor: "#fefae0", borderBottom: "1px solid #E8DECE", display: "flex", alignItems: "center", padding: "0 1rem", gap: "0.5rem" }}>
                 {["#E07B54","#d4a373","#7CAE7A"].map(c => <span key={c} style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: c, display: "inline-block" }} />)}
               </div>
@@ -494,6 +503,7 @@ export default function LandingClient({ isLoggedIn, displayName, initials }: Pro
           </div>
         </div>
       </footer>
+      </div>
     </div>
   );
 }
