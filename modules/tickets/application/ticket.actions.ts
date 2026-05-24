@@ -36,20 +36,25 @@ const PRIORITY_LABEL: Record<string, string> = {
   low:    "🟢 Baja",
 };
 
-// ── AI: decide prioridad y razón ─────────────────────────────────────────────
+// ── AI: decide prioridad usando OpenRouter ────────────────────────────────────
 async function aiDecidePriority(
   title: string,
   description: string
 ): Promise<{ priority: string; reason: string }> {
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) throw new Error("No OPENAI_API_KEY");
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) throw new Error("No OPENROUTER_API_KEY");
 
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+        "HTTP-Referer": "https://habitta.app",
+        "X-Title": "Habitta",
+      },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "openai/gpt-oss-120b:free",
         temperature: 0,
         max_tokens: 200,
         response_format: { type: "json_object" },
@@ -70,12 +75,17 @@ async function aiDecidePriority(
       }),
     });
 
+    if (!res.ok) throw new Error(`OpenRouter ${res.status}`);
+
     const json = await res.json();
-    const parsed = JSON.parse(json.choices?.[0]?.message?.content ?? "{}");
+    const content = json.choices?.[0]?.message?.content ?? "{}";
+    // gpt-oss-120b a veces envuelve el JSON en markdown, lo limpiamos
+    const clean = content.replace(/```json\n?/g, "").replace(/```/g, "").trim();
+    const parsed = JSON.parse(clean);
     if (["urgent", "high", "medium", "low"].includes(parsed.priority)) {
       return { priority: parsed.priority, reason: parsed.reason ?? "" };
     }
-  } catch { /* fallback */ }
+  } catch { /* fallback silencioso */ }
 
   return { priority: "medium", reason: "Prioridad asignada por defecto (IA no disponible)." };
 }
@@ -187,7 +197,6 @@ export async function changeTicketPriorityAction(ticketId: string, priority: str
         ? `${slaHours / 24} día${slaHours / 24 > 1 ? "s" : ""}`
         : "7 días";
 
-    // Comentario automático del cambio manual
     await addTicketComment(
       ticketId,
       user.id,
