@@ -17,11 +17,12 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard",     label: "Dashboard",      dot: "#d4a373" },
-  { href: "/organizations", label: "Organizaciones", dot: "#7CAE7A" },
-  { href: "/assets",        label: "Activos",         dot: "#6B9AB8" },
-  { href: "/tickets",       label: "Tickets",         dot: "#E07B54" },
-  { href: "/scheduling",    label: "Agenda",          dot: "#9B8BB4" },
+  { href: "/dashboard",            label: "Dashboard",      dot: "#d4a373" },
+  { href: "/dashboard/analytics",  label: "Analytics",      dot: "#a78bfa" },
+  { href: "/organizations",        label: "Organizaciones", dot: "#7CAE7A" },
+  { href: "/assets",               label: "Activos",         dot: "#6B9AB8" },
+  { href: "/tickets",              label: "Tickets",         dot: "#E07B54" },
+  { href: "/scheduling",           label: "Agenda",          dot: "#9B8BB4" },
 ];
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
@@ -39,7 +40,6 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     .join("")
     .toUpperCase();
 
-  // Cargar notificaciones en paralelo (falla silenciosa si RLS rechaza)
   const [notifications, unreadCount] = await Promise.all([
     getUnreadNotifications(5).catch(() => []),
     getUnreadCount().catch(() => 0),
@@ -97,7 +97,6 @@ export default async function DashboardLayout({ children }: { children: ReactNod
             "flex items-center px-8 justify-end gap-3",
           ].join(" ")}
         >
-          {/* Campana de notificaciones */}
           <NotificationBell
             unreadCount={unreadCount}
             notifications={notifications}
