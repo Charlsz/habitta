@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { FileText, Send, Download, CheckCircle, Trash2, X } from 'lucide-react';
 import { HabittaSpinner } from '@/modules/core/components/HabittaSpinner';
 import type { GeneratedDocument, ConfirmedData } from '../domain/document.types';
+import { popAIBridgeInstruction } from '@/lib/ai-bridge';
 
 type ChatMsg =
   | { role: 'user'; content: string }
@@ -34,6 +35,7 @@ export function DocumentsView({ orgId, orgName, userId, initialDocs, supabaseUrl
   const [activeDocForSend, setActiveDocForSend] = useState<GeneratedDocument | null>(null);
   const [orgContext, setOrgContext] = useState<string>('');
   const bottomRef = useRef<HTMLDivElement>(null);
+  const orgContextRef = useRef<string>('');
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -47,28 +49,38 @@ export function DocumentsView({ orgId, orgName, userId, initialDocs, supabaseUrl
       ]);
       if (ctxRes.ok) {
         const d = await ctxRes.json();
-        if (d.ok) setOrgContext(d.context);
+        if (d.ok) {
+          setOrgContext(d.context);
+          orgContextRef.current = d.context;
+        }
       }
       if (sessRes.ok) {
         const d = await sessRes.json();
         setChatSessions(d.sessions ?? []);
       }
+
+      // Check if the main AI assistant left an instruction for us
+      const bridge = popAIBridgeInstruction('documents');
+      if (bridge && bridge.orgId === orgId) {
+        setMessages(prev => [
+          ...prev,
+          { role: 'assistant', content: `📨 Instrucción recibida del asistente principal:\n_"${bridge.instruction}"_\nProcesando...` },
+        ]);
+        // Auto-send the instruction as if the user typed it
+        await sendPrompt(bridge.instruction, orgContextRef.current);
+      }
     }
     loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId]);
 
-  async function handleSend() {
-    const prompt = input.trim();
-    if (!prompt || loading) return;
-    setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: prompt }]);
+  async function sendPrompt(prompt: string, ctx: string) {
     setLoading(true);
-
     try {
       const res = await fetch(`${supabaseUrl}/functions/v1/generate-document-pdf`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${supabaseAnonKey}` },
-        body: JSON.stringify({ action: 'confirm', prompt, organization_id: orgId, org_context: orgContext }),
+        body: JSON.stringify({ action: 'confirm', prompt, organization_id: orgId, org_context: ctx }),
       });
       const data = await res.json();
 
@@ -76,7 +88,6 @@ export function DocumentsView({ orgId, orgName, userId, initialDocs, supabaseUrl
         setMessages(prev => [...prev, { role: 'assistant', content: data.message ?? 'Solo puedo ayudarte a generar documentos oficiales de esta organización. ¿Qué documento necesitas?' }]);
         return;
       }
-
       if (!data.ok) throw new Error(data.error);
       setMessages(prev => [...prev, { role: 'confirmation', data: data.confirmation, prompt }]);
     } catch (e: any) {
@@ -84,6 +95,14 @@ export function DocumentsView({ orgId, orgName, userId, initialDocs, supabaseUrl
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleSend() {
+    const prompt = input.trim();
+    if (!prompt || loading) return;
+    setInput('');
+    setMessages(prev => [...prev, { role: 'user', content: prompt }]);
+    await sendPrompt(prompt, orgContext);
   }
 
   async function handleConfirm(confirmedData: ConfirmedData, prompt: string) {
@@ -202,7 +221,7 @@ export function DocumentsView({ orgId, orgName, userId, initialDocs, supabaseUrl
             if (msg.role === 'assistant') {
               return (
                 <div key={i} className="flex justify-start">
-                  <div className="max-w-[75%] px-4 py-2.5 rounded-2xl rounded-tl-sm bg-[var(--surface)] text-[var(--foreground)] text-sm border border-[var(--border)]">
+                  <div className="max-w-[75%] px-4 py-2.5 rounded-2xl rounded-tl-sm bg-[var(--surface)] text-[var(--foreground)] text-sm border border-[var(--border)] whitespace-pre-wrap">
                     {msg.content}
                   </div>
                 </div>
