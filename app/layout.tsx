@@ -17,6 +17,16 @@ const playfair = Playfair_Display({
 export const metadata: Metadata = {
   title: "Habitta - Gestión Estructurada",
   description: "Convierte tu operación dispersa en gestión estructurada. Plataforma administrativa de ingresos, tickets y activos.",
+  icons: {
+    icon: [
+      { url: "/habitta_icon.png", sizes: "32x32",  type: "image/png" },
+      { url: "/habitta_icon.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [
+      { url: "/habitta_icon.png", sizes: "180x180", type: "image/png" },
+    ],
+    shortcut: "/habitta_icon.png",
+  },
 };
 
 export default function RootLayout({
@@ -29,7 +39,6 @@ export default function RootLayout({
       lang="es"
       className={`${dmSans.variable} ${playfair.variable} h-full antialiased`}
     >
-      {/* background y color se aplican desde globals.css — no clases Tailwind */}
       <body className="min-h-full flex flex-col font-sans">{children}</body>
     </html>
   );

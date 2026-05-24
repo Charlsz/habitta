@@ -67,6 +67,31 @@ export function SidebarNav({ orgs, logoutAction }: Props) {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
+
+      {/* ── Logo header ─────────────────────────────────────────── */}
+      <Link
+        href="/organizations"
+        className="flex items-center gap-3 px-5 py-5 shrink-0 hover:opacity-80 transition-opacity"
+      >
+        <Image
+          src="/habitta_icon.png"
+          alt="Habitta"
+          width={36}
+          height={36}
+          className="rounded-xl shadow-sm"
+          priority
+        />
+        <Image
+          src="/habitta_monochrome.png"
+          alt="Habitta"
+          width={90}
+          height={28}
+          className="object-contain"
+          priority
+        />
+      </Link>
+
+      {/* ── Nav items ───────────────────────────────────────────── */}
       <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
 
         <Link href="/organizations" className={itemCls(pathname === '/organizations')}>
@@ -95,21 +120,8 @@ export function SidebarNav({ orgs, logoutAction }: Props) {
         )}
       </nav>
 
+      {/* ── Logout ──────────────────────────────────────────────── */}
       <div className="px-3 py-4 shrink-0 border-t border-[var(--border)]">
-        {/* Logo al fondo del sidebar */}
-        <div className="flex items-center gap-2 px-4 py-2 mb-2 opacity-40">
-          <Image
-            src="/habitta_icon.png"
-            alt="Habitta"
-            width={20}
-            height={20}
-            className="rounded-md"
-          />
-          <span className="text-xs font-semibold tracking-wide" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
-            Habitta
-          </span>
-        </div>
-
         <form action={logoutAction}>
           <button
             type="submit"
