@@ -68,7 +68,7 @@ export function SidebarNav({ orgs, logoutAction }: Props) {
   return (
     <div className="flex flex-col flex-1 min-h-0">
 
-      {/* ── Logo header ────────────────────────────────────────── */}
+      {/* ── Logo ────────────────────────────────────────── */}
       <Link
         href="/organizations"
         className="flex items-center px-5 py-5 shrink-0 hover:opacity-80 transition-opacity"
