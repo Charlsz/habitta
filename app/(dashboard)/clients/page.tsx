@@ -4,6 +4,8 @@ import { getActiveOrganizationId } from '@/modules/organizations/application/org
 import { requireAuth } from '@/modules/auth/application/auth.guard';
 import { getClients } from '@/modules/clients/infrastructure/client.repository';
 import { ClientCard } from '@/modules/clients/components/ClientCard';
+import { TelegramLinkButton } from '@/modules/telegram/presentation/telegram-link-button';
+import { createClient as createSupabase } from '@/lib/supabase/server';
 import type { ClientStatus } from '@/modules/clients/domain/client.types';
 
 interface Props {
@@ -15,8 +17,15 @@ export default async function ClientsPage({ searchParams }: Props) {
   const params = await searchParams;
   const orgId  = await getActiveOrganizationId(user.id, params.org);
 
-  // Verificar acceso a la org
   await requireOrgRole(orgId, ['owner', 'admin', 'member']);
+
+  const supabase = await createSupabase();
+  const { data: orgData } = await supabase
+    .from('organizations')
+    .select('name')
+    .eq('id', orgId)
+    .maybeSingle();
+  const orgName = orgData?.name ?? '';
 
   const all = await getClients(orgId);
 
@@ -70,6 +79,9 @@ export default async function ClientsPage({ searchParams }: Props) {
           + Nuevo cliente
         </Link>
       </div>
+
+      {/* Bot link */}
+      <TelegramLinkButton organizationId={orgId} organizationName={orgName} />
 
       {/* KPI chips rápidos */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

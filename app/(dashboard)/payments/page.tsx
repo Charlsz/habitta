@@ -3,6 +3,7 @@ import { requireAuth } from "@/modules/auth/application/auth.guard";
 import { createClient } from "@/lib/supabase/server";
 import { getPayments } from "@/modules/payments/application/payments.actions";
 import { PaymentsClient } from "@/modules/payments/presentation/PaymentsClient";
+import { TelegramLinkButton } from "@/modules/telegram/presentation/telegram-link-button";
 
 const RESIDENTIAL_TYPES = ['residential', 'real_estate', 'residencial', 'inmobiliaria'];
 
@@ -17,7 +18,6 @@ export default async function PaymentsPage({
 
   if (!orgId) redirect("/organizations");
 
-  // Verify org exists and user is member
   const { data: membership } = await supabase
     .from("organization_members")
     .select("organization_id, role, organizations(id, name, type)")
@@ -26,7 +26,6 @@ export default async function PaymentsPage({
 
   const org = membership?.organizations as any;
 
-  // Guard: only residential/real_estate orgs
   if (!org || !RESIDENTIAL_TYPES.includes(org.type?.toLowerCase?.() ?? '')) {
     redirect(`/dashboard?org=${orgId}`);
   }
@@ -34,15 +33,21 @@ export default async function PaymentsPage({
   const payments = await getPayments(orgId).catch(() => []);
 
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-5xl">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-4">
         <h1 className="text-2xl font-bold text-[var(--foreground)]" style={{ fontFamily: "var(--font-playfair, serif)" }}>
           Pagos
         </h1>
         <p className="text-sm text-[var(--foreground)]/50 mt-1">
-          Gestiona cobros, envía recordatorios y registra pagos — <span className="font-medium">{org.name}</span>
+          Gestiona cobros y envía el enlace de pago por Telegram —{" "}
+          <span className="font-medium">{org.name}</span>
         </p>
+      </div>
+
+      {/* Bot link — para que residentes vinculen su Telegram */}
+      <div className="mb-6">
+        <TelegramLinkButton organizationId={orgId} organizationName={org.name} />
       </div>
 
       <PaymentsClient initialPayments={payments} orgId={orgId} />
