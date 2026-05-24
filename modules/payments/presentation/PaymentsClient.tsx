@@ -1,9 +1,14 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { CheckCircle, Send, AlertTriangle, Clock, RefreshCw } from "lucide-react";
+import { useState, useTransition, useRef } from "react";
+import { CheckCircle, Send, AlertTriangle, Clock, RefreshCw, Pencil, X, Check } from "lucide-react";
 import { HabittaSpinner } from "@/modules/core/components/HabittaSpinner";
-import { sendTelegramReminder, seedDemoPayments, type Payment } from "@/modules/payments/application/payments.actions";
+import {
+  sendTelegramReminder,
+  seedDemoPayments,
+  updatePaymentAmount,
+  type Payment,
+} from "@/modules/payments/application/payments.actions";
 
 function daysUntil(dateStr: string): number {
   const due = new Date(dateStr + "T00:00:00");
@@ -36,8 +41,103 @@ function StatusBadge({ status, days }: { status: Payment["status"]; days: number
   );
 }
 
+// ── Celda de monto editable ───────────────────────────────────────────────────
+function EditableAmount({
+  payment,
+  orgId,
+  onUpdated,
+}: {
+  payment: Payment;
+  orgId: string;
+  onUpdated: (id: string, newAmount: number) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [saving,  setSaving]  = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleEdit = () => {
+    setEditing(true);
+    setError(null);
+    setTimeout(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }, 50);
+  };
+
+  const handleCancel = () => {
+    setEditing(false);
+    setError(null);
+  };
+
+  const handleSave = async () => {
+    const raw = inputRef.current?.value ?? "";
+    const cleaned = raw.replace(/[^0-9]/g, "");
+    const amount  = parseInt(cleaned, 10);
+    if (!cleaned || amount <= 0) { setError("Monto inválido"); return; }
+
+    setSaving(true);
+    const res = await updatePaymentAmount(payment.id, orgId, amount);
+    setSaving(false);
+
+    if (res.ok) {
+      onUpdated(payment.id, amount);
+      setEditing(false);
+      setError(null);
+    } else {
+      setError(res.error ?? "Error guardando");
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter")  handleSave();
+    if (e.key === "Escape") handleCancel();
+  };
+
+  if (!editing) {
+    return (
+      <div className="flex items-center gap-1.5 group">
+        <span className="font-semibold" style={{ color: "#d4a373" }}>{formatCOP(payment.amount)}</span>
+        <button
+          onClick={handleEdit}
+          title="Editar monto"
+          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-[var(--border)]"
+        >
+          <Pencil className="w-3 h-3 text-[var(--muted)]" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-1">
+        <span className="text-xs text-[var(--muted)] shrink-0">$</span>
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode="numeric"
+          defaultValue={String(payment.amount)}
+          onKeyDown={handleKeyDown}
+          className="w-28 text-sm border border-[#d4a373] rounded px-2 py-1 outline-none focus:ring-2 focus:ring-[#d4a373]/50 bg-white"
+        />
+        {saving ? (
+          <HabittaSpinner size={16} />
+        ) : (
+          <>
+            <button onClick={handleSave}   title="Guardar" className="p-1 rounded hover:bg-emerald-50 text-emerald-600"><Check className="w-4 h-4" /></button>
+            <button onClick={handleCancel} title="Cancelar" className="p-1 rounded hover:bg-red-50 text-red-400"><X className="w-4 h-4" /></button>
+          </>
+        )}
+      </div>
+      {error && <p className="text-xs text-red-500">{error}</p>}
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 export function PaymentsClient({ initialPayments, orgId }: { initialPayments: Payment[]; orgId: string }) {
-  const [payments]                      = useState<Payment[]>(initialPayments);
+  const [payments, setPayments]         = useState<Payment[]>(initialPayments);
   const [reminderStates, setReminder]   = useState<Record<string, "idle" | "sending" | "sent" | "error">>({});
   const [seedPending, startSeed]        = useTransition();
 
@@ -46,6 +146,11 @@ export function PaymentsClient({ initialPayments, orgId }: { initialPayments: Pa
   const paid         = payments.filter((p) => p.status === "paid");
   const totalPending = pending.reduce((s, p) => s + p.amount, 0);
   const totalOverdue = overdue.reduce((s, p) => s + p.amount, 0);
+
+  // Actualiza el monto localmente sin recargar página
+  const handleAmountUpdated = (id: string, newAmount: number) => {
+    setPayments((prev) => prev.map((p) => p.id === id ? { ...p, amount: newAmount } : p));
+  };
 
   const handleReminder = async (payment: Payment) => {
     setReminder((prev) => ({ ...prev, [payment.id]: "sending" }));
@@ -105,7 +210,9 @@ export function PaymentsClient({ initialPayments, orgId }: { initialPayments: Pa
         <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
           <div>
             <h2 className="font-semibold text-sm">Recibos de pago</h2>
-            <p className="text-xs text-[var(--foreground)]/40 mt-0.5">Envía el enlace de pago al residente por Telegram</p>
+            <p className="text-xs text-[var(--foreground)]/40 mt-0.5">
+              Haz hover sobre el monto para editarlo — envía el enlace de pago al residente por Telegram
+            </p>
           </div>
           <button
             onClick={handleSeed}
@@ -134,7 +241,9 @@ export function PaymentsClient({ initialPayments, orgId }: { initialPayments: Pa
                   <tr key={p.id} className="hover:bg-[var(--sidebar-bg)]/40 transition-colors">
                     <td className="px-4 py-3 font-medium">{p.resident_name}</td>
                     <td className="px-4 py-3 text-[var(--foreground)]/70">{p.concept}</td>
-                    <td className="px-4 py-3 font-semibold" style={{ color: "#d4a373" }}>{formatCOP(p.amount)}</td>
+                    <td className="px-4 py-3">
+                      <EditableAmount payment={p} orgId={orgId} onUpdated={handleAmountUpdated} />
+                    </td>
                     <td className="px-4 py-3 text-[var(--foreground)]/60">{new Date(p.due_date + "T00:00:00").toLocaleDateString("es-CO")}</td>
                     <td className="px-4 py-3"><StatusBadge status={p.status} days={days} /></td>
                     <td className="px-4 py-3">

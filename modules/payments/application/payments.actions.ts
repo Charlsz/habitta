@@ -1,7 +1,17 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { requireOrgRole } from "@/modules/auth/application/auth.guard";
 import { revalidatePath } from "next/cache";
+
+function getAdmin() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+}
 
 export type PaymentStatus = "pending" | "paid" | "overdue";
 
@@ -21,7 +31,7 @@ export interface Payment {
   created_at: string;
 }
 
-// ── List payments for org ────────────────────────────────────────────────
+// ── List payments for org ──────────────────────────────────────────
 export async function getPayments(orgId: string): Promise<Payment[]> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -37,7 +47,7 @@ export async function getPayments(orgId: string): Promise<Payment[]> {
   return (data ?? []) as Payment[];
 }
 
-// ── Mark payment as paid ────────────────────────────────────────────────
+// ── Mark payment as paid ──────────────────────────────────────────
 export async function markPaymentPaid(paymentId: string, orgId: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -54,7 +64,33 @@ export async function markPaymentPaid(paymentId: string, orgId: string) {
   return { ok: true };
 }
 
-// ── Seed demo payments for org ────────────────────────────────────────────
+// ── Update payment amount (owner / admin only) ────────────────────────
+export async function updatePaymentAmount(
+  paymentId: string,
+  orgId: string,
+  newAmount: number
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    if (isNaN(newAmount) || newAmount <= 0) return { ok: false, error: "Monto inválido" };
+
+    await requireOrgRole(orgId, ["owner", "admin"]);
+
+    const admin = getAdmin();
+    const { error } = await admin
+      .from("payments")
+      .update({ amount: newAmount })
+      .eq("id", paymentId)
+      .eq("organization_id", orgId);
+
+    if (error) throw new Error(error.message);
+    revalidatePath("/payments");
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: e.message };
+  }
+}
+
+// ── Seed demo payments for org ─────────────────────────────────────────
 export async function seedDemoPayments(orgId: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -112,13 +148,12 @@ export async function seedDemoPayments(orgId: string) {
   return { ok: true };
 }
 
-// ── Send Telegram reminder via Edge Function ───────────────────────────────────
+// ── Send Telegram reminder via Edge Function ──────────────────────────────
 export async function sendTelegramReminder(paymentId: string, orgId: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("No autenticado");
 
-  // Fetch payment with resident's linked chat_session to get the real telegram_chat_id
   const { data: payment } = await supabase
     .from("payments")
     .select(`
@@ -134,7 +169,6 @@ export async function sendTelegramReminder(paymentId: string, orgId: string) {
 
   if (!payment) return { ok: false, error: "Pago no encontrado" };
 
-  // Resolve telegram_chat_id: from resident's chat_session, fallback to payment column
   const residentChatId = (payment as any).residents?.chat_sessions?.telegram_chat_id ?? null;
   const chatId = residentChatId ?? payment.telegram_chat_id;
 
