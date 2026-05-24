@@ -21,7 +21,7 @@ export interface Payment {
   created_at: string;
 }
 
-// ── List payments for org ─────────────────────────────────────────────────
+// ── List payments for org ────────────────────────────────────────────────
 export async function getPayments(orgId: string): Promise<Payment[]> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -112,8 +112,12 @@ export async function seedDemoPayments(orgId: string) {
   return { ok: true };
 }
 
-// ── Send Telegram reminder via Edge Function ──────────────────────────────
-export async function sendTelegramReminder(paymentId: string, orgId: string) {
+// ── Send Telegram reminder via Edge Function ───────────────────────────────────
+export async function sendTelegramReminder(
+  paymentId: string,
+  orgId: string,
+  customMessage?: string
+) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("No autenticado");
@@ -136,7 +140,7 @@ export async function sendTelegramReminder(paymentId: string, orgId: string) {
       "Content-Type":  "application/json",
       "Authorization": `Bearer ${anonKey}`,
     },
-    body: JSON.stringify({ payment }),
+    body: JSON.stringify({ payment, customMessage }),
   });
 
   const json = await res.json().catch(() => ({}));
