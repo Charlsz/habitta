@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
+const APP_URL = Deno.env.get("NEXT_PUBLIC_APP_URL") ?? "https://habitta.vercel.app";
 
 function daysUntil(dateStr: string): number {
   const due = new Date(dateStr + "T00:00:00Z");
@@ -38,7 +39,7 @@ Deno.serve(async (req: Request) => {
 
     let urgencyLine = "";
     if (payment.status === "overdue") {
-      urgencyLine = `⚠️ *Tu pago está VENCIDO.* Por favor regulariza tu situación a la brevedad.`;
+      urgencyLine = `⚠️ *Tu pago está VENCIDO.* Por favor regúlariza tu situación a la brevedad.`;
     } else if (days === 0) {
       urgencyLine = `🚨 *¡Tu pago vence HOY!* No lo dejes para después.`;
     } else if (days <= 3) {
@@ -47,12 +48,14 @@ Deno.serve(async (req: Request) => {
       urgencyLine = `📅 Tienes *${days} días* para realizar el pago.`;
     }
 
+    const payLink = `${APP_URL}/pay/${payment.id}`;
+
     const message =
 `🏠 *Recordatorio de pago — Habitta*
 
 Hola *${payment.resident_name}*,
 
-Te recordamos que tienes un pago pendiente:
+Tienes un pago pendiente:
 
 📋 *Concepto:* ${payment.concept}
 💰 *Monto:* ${formatCOP(payment.amount)}
@@ -60,25 +63,24 @@ Te recordamos que tienes un pago pendiente:
 
 ${urgencyLine}
 
-Para pagar ingresa al portal de tu conjunto o comunícate con la administración.
+👉 [Pagar ahora](${payLink})
 
 _Habitta · Sistema de gestión residencial_`;
 
-    // If no real chat_id, log and return demo success
     const chatId = payment.telegram_chat_id;
 
     if (!chatId || !TELEGRAM_BOT_TOKEN) {
       console.log("[DEMO] Telegram message would be sent:", message);
       return Response.json({
         ok: true,
-        message: "Reminder enviado (modo demo — configura TELEGRAM_BOT_TOKEN y telegram_chat_id del residente para envíos reales)",
+        message: "Reminder enviado (modo demo)",
         preview: message,
+        payLink,
       }, {
         headers: { "Access-Control-Allow-Origin": "*" },
       });
     }
 
-    // Real Telegram send
     const tgRes = await fetch(
       `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
       {
@@ -93,7 +95,7 @@ _Habitta · Sistema de gestión residencial_`;
       return Response.json({ ok: false, error: tgData.description }, { status: 400, headers: { "Access-Control-Allow-Origin": "*" } });
     }
 
-    return Response.json({ ok: true, message: "Reminder enviado por Telegram" }, {
+    return Response.json({ ok: true, message: "Enlace de pago enviado por Telegram" }, {
       headers: { "Access-Control-Allow-Origin": "*" },
     });
 
