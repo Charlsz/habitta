@@ -253,28 +253,23 @@ Respuesta informativa: {"type":"answer","content":"texto"}
 Acción (pide confirmación, no ejecutes sin que el admin confirme):
 {
   "type": "action",
-  "description": "breve descripción",
+  "description": "<VERBO + ENTIDAD + NOMBRE ESPECÍFICO — ejemplos abajo>",
   "confirmation_message": "Detalla exactamente qué se creará o modificará",
-  "operations": [
-    {
-      "table": "residents",
-      "type": "insert",
-      "payload": {
-        "full_name": "Carlos Andres Galvis Pajaro",
-        "email": "cgalvis21_@hotmail.com",
-        "phone": "3166610293",
-        "document_type": "cc",
-        "document_number": "1043638251",
-        "relation_type": "resident",
-        "move_in_date": "2025-05-24",
-        "status": "active",
-        "notes": "Tiene una mascota: perro",
-        "metadata": {"unit": "Apto 804", "floor": "8", "building": "Pajaro"}
-      }
-    }
-  ],
+  "operations": [ ... ],
   "undo_operations": []
 }
+
+REGLA CLAVE — campo "description":
+Debe describir con precisión QUÉ se hizo y SOBRE QUÉ. Usa el nombre/título real del elemento.
+Ejemplos según tabla y operación:
+- INSERT tickets   → "Crear ticket: Gotera en el techo del sótano"
+- UPDATE tickets   → "Cerrar ticket: Falla eléctrica piso 4" o "Cambiar prioridad a urgente: Gotera en el techo"
+- INSERT residents → "Registrar residente: Carlos Galvis (Apto 804)"
+- UPDATE residents → "Actualizar estado de Carlos Galvis a inactivo"
+- DELETE residents → "Eliminar residente: Juan Pérez"
+- INSERT assets    → "Registrar activo: Bomba de agua principal"
+- UPDATE events    → "Aprobar evento: Reunión de copropietarios"
+Nunca escribas "breve descripción" ni texto genérico. Siempre incluye el nombre/título real.
 
 REGLAS ABSOLUTAS:
 - NO incluyas organization_id en payload.
