@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { FileText, Send, Download, Loader2, CheckCircle, ChevronDown, Trash2, X } from 'lucide-react';
+import { FileText, Send, Download, Loader2, CheckCircle, Trash2, X } from 'lucide-react';
 import type { GeneratedDocument, ConfirmedData } from '../domain/document.types';
 
 type ChatMsg =
@@ -31,22 +31,30 @@ export function DocumentsView({ orgId, orgName, userId, initialDocs, supabaseUrl
   const [chatSessions, setChatSessions] = useState<{ id: string; display_name: string | null; telegram_username: string | null }[]>([]);
   const [showSendModal, setShowSendModal] = useState(false);
   const [activeDocForSend, setActiveDocForSend] = useState<GeneratedDocument | null>(null);
+  const [orgContext, setOrgContext] = useState<string>('');
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Load chat sessions for this org
+  // Load org context (real data) and chat sessions
   useEffect(() => {
-    async function loadSessions() {
-      const res = await fetch(`/api/documents/chat-sessions?org=${orgId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setChatSessions(data.sessions ?? []);
+    async function loadData() {
+      const [ctxRes, sessRes] = await Promise.all([
+        fetch(`/api/documents/context?org=${orgId}`),
+        fetch(`/api/documents/chat-sessions?org=${orgId}`),
+      ]);
+      if (ctxRes.ok) {
+        const d = await ctxRes.json();
+        if (d.ok) setOrgContext(d.context);
+      }
+      if (sessRes.ok) {
+        const d = await sessRes.json();
+        setChatSessions(d.sessions ?? []);
       }
     }
-    loadSessions();
+    loadData();
   }, [orgId]);
 
   async function handleSend() {
@@ -59,11 +67,8 @@ export function DocumentsView({ orgId, orgName, userId, initialDocs, supabaseUrl
     try {
       const res = await fetch(`${supabaseUrl}/functions/v1/generate-document-pdf`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${supabaseAnonKey}`,
-        },
-        body: JSON.stringify({ action: 'confirm', prompt, organization_id: orgId }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${supabaseAnonKey}` },
+        body: JSON.stringify({ action: 'confirm', prompt, organization_id: orgId, org_context: orgContext }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
@@ -84,7 +89,6 @@ export function DocumentsView({ orgId, orgName, userId, initialDocs, supabaseUrl
     setLoading(true);
 
     try {
-      // Create record in DB first
       const createRes = await fetch('/api/documents/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -94,13 +98,9 @@ export function DocumentsView({ orgId, orgName, userId, initialDocs, supabaseUrl
       if (!createData.ok) throw new Error(createData.error);
       const documentId = createData.document_id;
 
-      // Generate the document
       const res = await fetch(`${supabaseUrl}/functions/v1/generate-document-pdf`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${supabaseAnonKey}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${supabaseAnonKey}` },
         body: JSON.stringify({
           action: 'generate',
           prompt,
@@ -108,12 +108,12 @@ export function DocumentsView({ orgId, orgName, userId, initialDocs, supabaseUrl
           organization_id: orgId,
           document_id: documentId,
           user_id: userId,
+          org_context: orgContext,
         }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
 
-      // Refresh doc list
       const listRes = await fetch(`/api/documents/list?org=${orgId}`);
       const listData = await listRes.json();
       setDocs(listData.documents ?? []);
@@ -170,16 +170,20 @@ export function DocumentsView({ orgId, orgName, userId, initialDocs, supabaseUrl
       {/* ── LEFT: Chat ──────────────────────────────────────────── */}
       <div className="flex flex-col flex-1 min-w-0 border-r border-[var(--border)]">
 
-        {/* Header */}
         <div className="h-14 flex items-center px-5 gap-3 shrink-0 border-b border-[var(--border)]">
           <FileText className="w-4 h-4 text-[var(--foreground)]/40" />
           <div>
             <p className="text-sm font-semibold text-[var(--foreground)]">Asistente de Documentos</p>
             <p className="text-xs text-[var(--foreground)]/40">{orgName}</p>
           </div>
+          {orgContext && (
+            <span className="ml-auto text-[10px] text-emerald-500 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+              Datos cargados
+            </span>
+          )}
         </div>
 
-        {/* Messages */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
           {messages.map((msg, i) => {
             if (msg.role === 'user') {
@@ -233,11 +237,13 @@ export function DocumentsView({ orgId, orgName, userId, initialDocs, supabaseUrl
                       {msg.doc.pdf_url && (
                         <a
                           href={msg.doc.pdf_url}
-                          download={`${msg.doc.title}.svg`}
+                          download={`${msg.doc.title}.pdf`}
+                          target="_blank"
+                          rel="noreferrer"
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 transition-colors"
                         >
                           <Download className="w-3.5 h-3.5" />
-                          Descargar
+                          Descargar PDF
                         </a>
                       )}
                     </div>
@@ -250,7 +256,6 @@ export function DocumentsView({ orgId, orgName, userId, initialDocs, supabaseUrl
           <div ref={bottomRef} />
         </div>
 
-        {/* Input */}
         <div className="shrink-0 border-t border-[var(--border)] px-4 py-3">
           <div className="flex gap-2 items-end">
             <textarea
@@ -308,7 +313,7 @@ export function DocumentsView({ orgId, orgName, userId, initialDocs, supabaseUrl
               <p className="font-semibold text-[var(--foreground)]">Enviar a chat</p>
               <button onClick={() => setShowSendModal(false)}><X className="w-4 h-4" /></button>
             </div>
-            <p className="text-xs text-[var(--foreground)]/50">"{activeDocForSend.title}" — selecciona el cliente al que quieres enviárselo:</p>
+            <p className="text-xs text-[var(--foreground)]/50">"{activeDocForSend.title}" — selecciona el cliente:</p>
             {chatSessions.length === 0 && (
               <p className="text-xs text-[var(--foreground)]/40 text-center py-4">No hay clientes conectados al bot de esta organización.</p>
             )}
@@ -417,15 +422,21 @@ function DocCard({ doc, sessions, sendingDocId, onDelete, onSend, onOpenSendModa
 
       {doc.status === 'ready' && (
         <div className="flex gap-1.5">
-          {doc.pdf_url && (
+          {doc.pdf_url ? (
             <a
               href={doc.pdf_url}
-              download={`${doc.title}.svg`}
+              download={`${doc.title}.pdf`}
+              target="_blank"
+              rel="noreferrer"
               className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg bg-[var(--surface)] border border-[var(--border)] text-[10px] font-medium hover:bg-white transition-colors"
             >
               <Download className="w-3 h-3" />
               Descargar
             </a>
+          ) : (
+            <span className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg bg-[var(--surface)] border border-[var(--border)] text-[10px] text-[var(--foreground)]/30">
+              Sin PDF
+            </span>
           )}
           <button
             onClick={onOpenSendModal}
