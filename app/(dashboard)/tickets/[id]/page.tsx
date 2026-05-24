@@ -5,6 +5,7 @@ import {
   getOrgMembers,
 } from "@/modules/tickets/infrastructure/ticket.repository";
 import { TicketPriorityBadge, TicketStatusBadge } from "@/modules/tickets/presentation/ticket-badge";
+import { TelegramNotifiedBadge } from "@/modules/tickets/presentation/telegram-notified-badge";
 import {
   changeTicketStatusAction,
   addTicketCommentAction,
@@ -63,6 +64,7 @@ export default async function TicketDetailPage({
   const isAdmin      = role === "owner" || role === "admin";
   const assigneeName = (ticket as any).assignee?.full_name ?? null;
   const isTelegramTicket = (ticket as any).source === "telegram" && !!(ticket as any).telegram_session_id;
+  const telegramNotifiedAt = (ticket as any).telegram_notified_at ?? null;
 
   const telegramSession = isTelegramTicket && isAdmin
     ? await getTelegramSession((ticket as any).telegram_session_id)
@@ -95,6 +97,8 @@ export default async function TicketDetailPage({
                   Sin asignar
                 </span>
               )}
+              {/* Badge de notificación Telegram por visita programada */}
+              <TelegramNotifiedBadge notifiedAt={telegramNotifiedAt} />
             </div>
             <h1 className="text-2xl font-bold habitta-title">{ticket.title}</h1>
             <p className="text-sm habitta-muted">
