@@ -51,8 +51,8 @@ export function ClientForm({ organizationId, assets, chatSessions, client, onSuc
     }
   }, [state, onSuccess]);
 
-  const field = 'w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm focus:outline-none focus:ring-1 focus:ring-[#d4a373] transition-shadow';
-  const label = 'block text-xs font-medium text-[var(--muted)] mb-1';
+  const field   = 'w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm focus:outline-none focus:ring-1 focus:ring-[#d4a373] transition-shadow';
+  const label   = 'block text-xs font-medium text-[var(--muted)] mb-1';
   const section = 'space-y-3';
 
   return (
@@ -69,8 +69,13 @@ export function ClientForm({ organizationId, assets, chatSessions, client, onSuc
       <div className={section}>
         <div>
           <label className={label}>Nombre completo *</label>
-          <input name="full_name" required defaultValue={client?.full_name}
-            className={field} placeholder="Ej. Carlos Gálvez" />
+          <input
+            name="full_name"
+            required
+            defaultValue={client?.full_name}
+            className={field}
+            placeholder="Ej. Carlos Gálvez"
+          />
         </div>
       </div>
 
@@ -152,19 +157,21 @@ export function ClientForm({ organizationId, assets, chatSessions, client, onSuc
         </div>
       </div>
 
-      {/* Ocupación */}
+      {/* Vinculación — solo fecha de ingreso al crear/editar */}
       <div>
-        <p className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider mb-2">Ocupación</p>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className={label}>Fecha de ingreso</label>
-            <input name="move_in_date" type="date" defaultValue={client?.move_in_date ?? ''} className={field} />
-          </div>
-          <div>
-            <label className={label}>Fecha de salida</label>
-            <input name="move_out_date" type="date" defaultValue={client?.move_out_date ?? ''} className={field} />
-          </div>
+        <p className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider mb-2">Vinculación</p>
+        <div className="max-w-[200px]">
+          <label className={label}>Fecha de ingreso</label>
+          <input
+            name="move_in_date"
+            type="date"
+            defaultValue={client?.move_in_date ?? ''}
+            className={field}
+          />
         </div>
+        <p className="text-xs text-[var(--muted)] mt-1.5">
+          La fecha de salida se registra cuando el cliente se desactiva.
+        </p>
       </div>
 
       {/* Telegram */}
@@ -188,9 +195,13 @@ export function ClientForm({ organizationId, assets, chatSessions, client, onSuc
       {/* Notas */}
       <div>
         <label className={label}>Notas internas</label>
-        <textarea name="notes" rows={3} defaultValue={client?.notes ?? ''}
+        <textarea
+          name="notes"
+          rows={3}
+          defaultValue={client?.notes ?? ''}
           className={`${field} resize-none`}
-          placeholder="Observaciones adicionales..." />
+          placeholder="Observaciones adicionales..."
+        />
       </div>
 
       <button
