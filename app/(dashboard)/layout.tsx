@@ -17,12 +17,13 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard",            label: "Dashboard",      dot: "#d4a373" },
-  { href: "/dashboard/analytics",  label: "Analytics",      dot: "#a78bfa" },
-  { href: "/organizations",        label: "Organizaciones", dot: "#7CAE7A" },
-  { href: "/assets",               label: "Activos",         dot: "#6B9AB8" },
-  { href: "/tickets",              label: "Tickets",         dot: "#E07B54" },
-  { href: "/scheduling",           label: "Agenda",          dot: "#9B8BB4" },
+  { href: "/dashboard",                      label: "Dashboard",      dot: "#d4a373" },
+  { href: "/dashboard/analytics",            label: "Analytics",      dot: "#a78bfa" },
+  { href: "/organizations",                  label: "Organizaciones", dot: "#7CAE7A" },
+  { href: "/assets",                         label: "Activos",         dot: "#6B9AB8" },
+  { href: "/tickets",                        label: "Tickets",         dot: "#E07B54" },
+  { href: "/scheduling",                     label: "Agenda",          dot: "#9B8BB4" },
+  { href: "/notifications/broadcast",        label: "Broadcast",       dot: "#34d399" },
 ];
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
