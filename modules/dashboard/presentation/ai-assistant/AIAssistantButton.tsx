@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useTransition, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import { askAIAssistant, getOrganizationAIContext } from "@/modules/dashboard/application/ai-assistant.actions";
 
 interface Message {
@@ -26,8 +27,11 @@ export function AIAssistantButton({ initialContext }: Props) {
   const [isPending, startTransition] = useTransition();
   const bottomRef  = useRef<HTMLDivElement>(null);
   const inputRef   = useRef<HTMLInputElement>(null);
-  // Guardamos el orgId actual para detectar cambios
   const trackedOrgId = useRef<string | undefined>(context?.orgId);
+
+  // Detect if we're on the documents page — hide the bubble there
+  const pathname = usePathname();
+  const isDocumentsPage = pathname === "/documents";
 
   // ── Carga contexto para un orgId concreto ───────────────────────────────
   const loadContext = useCallback(async (orgId?: string, announce = false) => {
@@ -38,7 +42,6 @@ export function AIAssistantButton({ initialContext }: Props) {
       setContext(fresh);
       trackedOrgId.current = fresh.orgId;
       if (announce) {
-        // Notifica dentro del chat que se cambió la org, sin borrar el historial
         setMessages((prev) => [
           ...prev,
           {
@@ -52,17 +55,15 @@ export function AIAssistantButton({ initialContext }: Props) {
     }
   }, []);
 
-  // ── Al abrir: carga contexto inicial y pon el saludo si no hay historial ───
+  // ── Al abrir: carga contexto y saludo ─────────────────────────────────
   useEffect(() => {
     if (!open) return;
     setTimeout(() => inputRef.current?.focus(), 100);
 
     const urlOrgId = getOrgIdFromURL();
     if (urlOrgId !== trackedOrgId.current) {
-      // La org ya era distinta al abrir
       loadContext(urlOrgId, messages.length > 0);
     } else if (messages.length === 0) {
-      // Primera apertura: saludo
       setMessages([
         {
           role: "assistant",
@@ -82,10 +83,9 @@ export function AIAssistantButton({ initialContext }: Props) {
     const interval = setInterval(() => {
       const urlOrgId = getOrgIdFromURL();
       if (urlOrgId && urlOrgId !== trackedOrgId.current) {
-        // La org cambió — recargar contexto y avisar en el chat
         loadContext(urlOrgId, true);
       }
-    }, 1500); // cada 1.5 s, costo mínimo
+    }, 1500);
 
     return () => clearInterval(interval);
   }, [open, loadContext]);
@@ -119,6 +119,10 @@ export function AIAssistantButton({ initialContext }: Props) {
       }
     });
   };
+
+  // En /documents la burbuja no se renderiza visualmente,
+  // pero el componente sigue montado y el contexto sigue vivo.
+  if (isDocumentsPage) return null;
 
   return (
     <>
