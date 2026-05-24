@@ -4,24 +4,117 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  Ticket, Calendar, Building, LayoutDashboard,
-  Users, Paperclip, Menu, X
+  MessageSquareText, CalendarCheck2, Home,
+  BarChart3, ShieldCheck, FileText,
+  BellRing, Sparkles, Menu, X
 } from "lucide-react";
 
 const FEATURES = [
-  { icon: Ticket,         title: "Tickets y solicitudes",    desc: "Crea, asigna y da seguimiento a incidencias, prioridades y estados en un solo tablero.",          bg: "#faedcd", dot: "#d4a373" },
-  { icon: Calendar,       title: "Agenda operativa",         desc: "Programa eventos y controla reservas con validador anti-cruces de fechas.",                       bg: "#e9edc9", dot: "#7CAE7A" },
-  { icon: Building,       title: "Gestión de activos",       desc: "Administra tu inventario, propiedades y recursos operativos de forma central.",                   bg: "#faedcd", dot: "#6B9AB8" },
-  { icon: LayoutDashboard,title: "Dashboard en tiempo real", desc: "KPIs instantáneos. Mantén la vista en cuellos de botella e incidencias abiertas.",               bg: "#ccd5ae", dot: "#d4a373" },
-  { icon: Users,          title: "Control por roles",        desc: "Multi-empresa nativa. Administradores, miembros y clientes ven solo lo que deben.",              bg: "#faedcd", dot: "#9B8BB4" },
-  { icon: Paperclip,      title: "Adjuntos y evidencias",    desc: "Sube fotos, PDFs e imágenes como evidencia al resolver tickets. Todo en la nube.",               bg: "#e9edc9", dot: "#E07B54" },
+  {
+    icon: MessageSquareText,
+    title: "Todo en un solo lugar",
+    desc: "Recibe solicitudes, quejas y peticiones de tus residentes o clientes sin perder ninguna. Sin WhatsApp, sin correos perdidos.",
+    bg: "#faedcd", dot: "#d4a373"
+  },
+  {
+    icon: CalendarCheck2,
+    title: "Agenda sin enredos",
+    desc: "Programa visitas, mudanzas o reservas de zonas comunes con un clic. El sistema avisa si ya hay algo agendado para ese momento.",
+    bg: "#e9edc9", dot: "#7CAE7A"
+  },
+  {
+    icon: Home,
+    title: "Controla tus propiedades",
+    desc: "Registra todos tus apartamentos, parqueaderos, bodegas y zonas comunes. Asígnalos a propietarios o arrendatarios fácilmente.",
+    bg: "#faedcd", dot: "#6B9AB8"
+  },
+  {
+    icon: BarChart3,
+    title: "Ve qué está pasando",
+    desc: "Un tablero visual te muestra cuántas solicitudes están abiertas, cuáles llevan más tiempo sin respuesta y qué tan bien está trabajando tu equipo.",
+    bg: "#ccd5ae", dot: "#d4a373"
+  },
+  {
+    icon: ShieldCheck,
+    title: "Cada quien ve lo suyo",
+    desc: "El administrador ve todo. Los residentes solo ven sus propias solicitudes. Sin mezclas, sin confusiones.",
+    bg: "#faedcd", dot: "#9B8BB4"
+  },
+  {
+    icon: FileText,
+    title: "Documentos en segundos",
+    desc: "Genera cartas de paz y salvo, circulares, actas de reunión y más con inteligencia artificial. Descárgalos o envíalos directo por Telegram.",
+    bg: "#e9edc9", dot: "#E07B54"
+  },
+];
+
+const STEPS = [
+  {
+    num: "01",
+    title: "Crea tu espacio",
+    desc: "Registra tu conjunto, empresa u organización en menos de 2 minutos.",
+    color: "#d4a373"
+  },
+  {
+    num: "02",
+    title: "Agrega a tu gente",
+    desc: "Invita a tu equipo y tus residentes o clientes. Cada uno entra con su propio acceso.",
+    color: "#7CAE7A"
+  },
+  {
+    num: "03",
+    title: "Empieza a operar",
+    desc: "Recibe solicitudes, respóndelas, programa eventos y deja de usar WhatsApp para trabajar.",
+    color: "#6B9AB8"
+  },
 ];
 
 const SECTORS = [
-  { title: "Conjuntos residenciales", desc: "PQRs, reservas de zonas comunes, control de novedades y comunicación con residentes.",                                            accent: "#d4a373" },
-  { title: "Constructoras",           desc: "Reporte de novedades de obra, seguimiento fotográfico a incidencias y control por proyecto.",                                     accent: "#E07B54" },
-  { title: "Inmobiliarias",           desc: "Canaliza mantenimientos locativos de tus arrendatarios a proveedores técnicos de forma profesional.",                            accent: "#7CAE7A" },
-  { title: "Operaciones multisede",   desc: "Supervisa sucursales a nivel nacional con KPIs claros de resolución desde gerencia general.",                                    accent: "#6B9AB8" },
+  {
+    emoji: "🏢",
+    title: "Conjuntos residenciales",
+    desc: "Gestiona quejas, solicitudes, reservas de zonas comunes y pagos de administración sin volverte loco.",
+    accent: "#d4a373"
+  },
+  {
+    emoji: "🏗️",
+    title: "Constructoras",
+    desc: "Registra novedades de obra, asigna responsables y ten un historial fotográfico de cada incidencia.",
+    accent: "#E07B54"
+  },
+  {
+    emoji: "🏠",
+    title: "Inmobiliarias",
+    desc: "Coordina mantenimientos, atiende a tus arrendatarios y lleva el control de cada propiedad en un solo sitio.",
+    accent: "#7CAE7A"
+  },
+  {
+    emoji: "🏪",
+    title: "Negocios con varias sedes",
+    desc: "Supervisa lo que pasa en cada sede desde un único tablero. Sin perder el hilo de ninguna.",
+    accent: "#6B9AB8"
+  },
+];
+
+const TESTIMONIALS = [
+  {
+    text: "\"Antes todo era un caos de mensajes en WhatsApp. Ahora cada solicitud tiene un estado y un responsable. Por fin puedo dormir tranquila.\"",
+    name: "Luisa M.",
+    role: "Administradora de conjunto",
+    color: "#d4a373"
+  },
+  {
+    text: "\"Lo instalé en 10 minutos y en la primera semana ya tenía a todos mis residentes enviando sus solicitudes por aquí. Increíble.\"",
+    name: "Carlos R.",
+    role: "Administrador independiente",
+    color: "#7CAE7A"
+  },
+  {
+    text: "\"El asistente de IA me generó el acta de la reunión en 30 segundos y la envió por Telegram. Eso antes me tomaba una hora.\"",
+    name: "Sandra P.",
+    role: "Gestora de propiedades",
+    color: "#6B9AB8"
+  },
 ];
 
 interface Props {
@@ -34,7 +127,7 @@ export default function LandingClient({ isLoggedIn, displayName, initials }: Pro
   const [menuOpen, setMenuOpen] = useState(false);
 
   const primaryHref  = "/dashboard";
-  const primaryLabel = isLoggedIn ? "Ir al dashboard" : "Empezar gratis";
+  const primaryLabel = isLoggedIn ? "Ir a mi panel" : "Probar gratis";
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#fefae0", color: "#2C2416", fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}>
@@ -44,44 +137,39 @@ export default function LandingClient({ isLoggedIn, displayName, initials }: Pro
         <div className="mx-auto max-w-6xl px-6">
           <div className="flex h-16 items-center justify-between">
 
-            <Link href="/" className="inline-flex items-center hover:opacity-85 transition-opacity" aria-label="Ir al inicio de Habitta">
-              <Image
-                src="/habitta_icon.png"
-                alt="Habitta"
-                width={96}
-                height={32}
-                priority
-                className="block object-contain"
-              />
+            <Link href="/" className="inline-flex items-center hover:opacity-85 transition-opacity" aria-label="Inicio">
+              <Image src="/habitta_icon.png" alt="Habitta" width={96} height={32} priority className="block object-contain" />
             </Link>
 
             <nav className="hidden md:flex items-center gap-8">
-              {(["#como-funciona", "#caracteristicas", "#sectores"] as const).map((href, i) => (
+              {(["#como-funciona", "#que-puedes-hacer", "#para-quien"] as const).map((href, i) => (
                 <a key={href} href={href}
                   style={{ fontSize: "0.875rem", fontWeight: 500, color: "#7A6A52", textDecoration: "none", transition: "color 150ms" }}
                   onMouseEnter={e => (e.currentTarget.style.color = "#2C2416")}
                   onMouseLeave={e => (e.currentTarget.style.color = "#7A6A52")}>
-                  {["Cómo funciona", "Características", "Sectores"][i]}
+                  {["Cómo funciona", "Qué puedes hacer", "¿Para quién?"][i]}
                 </a>
               ))}
             </nav>
 
-            {/* Auth area: si está logueado muestra avatar con iniciales; si no, botón Ingresar */}
             <div className="hidden md:flex items-center gap-3">
               {isLoggedIn && initials ? (
-                <Link href="/dashboard" className="flex items-center gap-2 group" style={{ textDecoration: "none" }}>
+                <Link href="/dashboard" className="flex items-center gap-2" style={{ textDecoration: "none" }}>
                   <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "#7A6A52" }}>{displayName}</span>
-                  <div
-                    style={{ width: 34, height: 34, borderRadius: "50%", backgroundColor: "#d4a373", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: "0.75rem", cursor: "pointer", flexShrink: 0 }}
-                    title={`Ir al dashboard - ${displayName}`}
-                  >
+                  <div style={{ width: 34, height: 34, borderRadius: "50%", backgroundColor: "#d4a373", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: "0.75rem", cursor: "pointer", flexShrink: 0 }}>
                     {initials}
                   </div>
                 </Link>
               ) : (
-                <Link href="/login" style={{ fontSize: "0.875rem", fontWeight: 500, color: "#7A6A52", textDecoration: "none" }}>
-                  Ingresar
-                </Link>
+                <>
+                  <Link href="/login" style={{ fontSize: "0.875rem", fontWeight: 500, color: "#7A6A52", textDecoration: "none" }}>Ingresar</Link>
+                  <Link href="/register"
+                    style={{ fontSize: "0.875rem", fontWeight: 600, color: "#fff", backgroundColor: "#d4a373", padding: "0.4rem 1.1rem", borderRadius: "7px", textDecoration: "none", transition: "background 150ms" }}
+                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#C4915F")}
+                    onMouseLeave={e => (e.currentTarget.style.backgroundColor = "#d4a373")}>
+                    Crear cuenta gratis
+                  </Link>
+                </>
               )}
             </div>
 
@@ -94,7 +182,7 @@ export default function LandingClient({ isLoggedIn, displayName, initials }: Pro
 
         {menuOpen && (
           <div style={{ backgroundColor: "#faedcd", borderTop: "1px solid #E8DECE", padding: "1rem 1.5rem 1.5rem" }}>
-            {([["#como-funciona", "Cómo funciona"], ["#caracteristicas", "Características"], ["#sectores", "Sectores"]] as [string,string][]).map(
+            {([["#como-funciona", "Cómo funciona"], ["#que-puedes-hacer", "Qué puedes hacer"], ["#para-quien", "¿Para quién?"]] as [string,string][]).map(
               ([href, label]) => (
                 <a key={href} href={href} onClick={() => setMenuOpen(false)}
                   style={{ display: "block", padding: "0.625rem 0", fontSize: "0.9375rem", fontWeight: 500, color: "#2C2416", textDecoration: "none", borderBottom: "1px solid #E8DECE" }}>
@@ -102,22 +190,26 @@ export default function LandingClient({ isLoggedIn, displayName, initials }: Pro
                 </a>
               )
             )}
-            <div className="mt-4">
+            <div className="mt-4 flex flex-col gap-2">
               {isLoggedIn ? (
                 <Link href="/dashboard" onClick={() => setMenuOpen(false)}
                   style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.625rem", border: "1px solid #E8DECE", borderRadius: "8px", color: "#2C2416", fontWeight: 500, textDecoration: "none" }}>
                   {initials && (
-                    <div style={{ width: 28, height: 28, borderRadius: "50%", backgroundColor: "#d4a373", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: "0.7rem", flexShrink: 0 }}>
-                      {initials}
-                    </div>
+                    <div style={{ width: 28, height: 28, borderRadius: "50%", backgroundColor: "#d4a373", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: "0.7rem", flexShrink: 0 }}>{initials}</div>
                   )}
-                  Ir al dashboard
+                  Ir a mi panel
                 </Link>
               ) : (
-                <Link href="/login" onClick={() => setMenuOpen(false)}
-                  style={{ display: "block", textAlign: "center", padding: "0.625rem", border: "1px solid #E8DECE", borderRadius: "8px", color: "#7A6A52", fontWeight: 500, textDecoration: "none" }}>
-                  Ingresar
-                </Link>
+                <>
+                  <Link href="/login" onClick={() => setMenuOpen(false)}
+                    style={{ display: "block", textAlign: "center", padding: "0.625rem", border: "1px solid #E8DECE", borderRadius: "8px", color: "#7A6A52", fontWeight: 500, textDecoration: "none" }}>
+                    Ingresar
+                  </Link>
+                  <Link href="/register" onClick={() => setMenuOpen(false)}
+                    style={{ display: "block", textAlign: "center", padding: "0.625rem", backgroundColor: "#d4a373", borderRadius: "8px", color: "#fff", fontWeight: 600, textDecoration: "none" }}>
+                    Crear cuenta gratis
+                  </Link>
+                </>
               )}
             </div>
           </div>
@@ -125,40 +217,44 @@ export default function LandingClient({ isLoggedIn, displayName, initials }: Pro
       </header>
 
       <main>
+
         {/* ── HERO ── */}
         <section style={{ padding: "5rem 1.5rem 6rem" }}>
           <div className="mx-auto max-w-4xl text-center">
+
             <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", backgroundColor: "#faedcd", border: "1px solid #E8DECE", borderRadius: "999px", padding: "0.25rem 0.875rem", fontSize: "0.8125rem", fontWeight: 600, color: "#7A6A52", marginBottom: "2rem" }}>
-              <span style={{ width: 7, height: 7, borderRadius: "50%", backgroundColor: "#d4a373", display: "inline-block" }} />
-              Plataforma operativa inteligente
+              <Sparkles size={13} style={{ color: "#d4a373" }} />
+              Ahora con inteligencia artificial
             </div>
 
-            <h1 style={{ fontFamily: "var(--font-playfair), serif", fontSize: "clamp(2.5rem, 6vw, 3.75rem)", fontWeight: 700, lineHeight: 1.15, color: "#2C2416", marginBottom: "1.5rem" }}>
-              Convierte tu operación dispersa en{" "}
-              <span style={{ color: "#d4a373" }}>gestión estructurada</span>
+            <h1 style={{ fontFamily: "var(--font-playfair), serif", fontSize: "clamp(2.4rem, 6vw, 3.75rem)", fontWeight: 700, lineHeight: 1.15, color: "#2C2416", marginBottom: "1.5rem" }}>
+              Deja de administrar
+              {" "}tu propiedad{" "}
+              <span style={{ color: "#d4a373" }}>por WhatsApp</span>
             </h1>
 
-            <p style={{ fontSize: "1.125rem", lineHeight: 1.7, color: "#7A6A52", maxWidth: "38rem", margin: "0 auto 2.5rem" }}>
-              Habitta centraliza tus solicitudes, tickets, activos y agenda sin importar el tamaño de tu organización.
-              Vuelve la paz mental a tu equipo.
+            <p style={{ fontSize: "1.125rem", lineHeight: 1.7, color: "#7A6A52", maxWidth: "40rem", margin: "0 auto 2.5rem" }}>
+              Habitta es la plataforma que te ayuda a recibir solicitudes, resolver problemas, enviar recordatorios de pago y generar documentos — todo desde un solo lugar, sin enredos.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link href={primaryHref}
-                style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", backgroundColor: "#d4a373", color: "#fff", fontWeight: 600, fontSize: "0.9375rem", padding: "0.75rem 2rem", borderRadius: "8px", textDecoration: "none", transition: "background-color 150ms" }}
+                style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", backgroundColor: "#d4a373", color: "#fff", fontWeight: 700, fontSize: "1rem", padding: "0.85rem 2.25rem", borderRadius: "8px", textDecoration: "none", transition: "background-color 150ms" }}
                 onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#C4915F")}
                 onMouseLeave={e => (e.currentTarget.style.backgroundColor = "#d4a373")}>
-                {primaryLabel}
+                {primaryLabel} →
               </Link>
               {!isLoggedIn && (
                 <Link href="/login"
-                  style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", backgroundColor: "#faedcd", color: "#2C2416", fontWeight: 500, fontSize: "0.9375rem", padding: "0.75rem 2rem", borderRadius: "8px", border: "1px solid #E8DECE", textDecoration: "none", transition: "background-color 150ms" }}
+                  style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", backgroundColor: "#faedcd", color: "#2C2416", fontWeight: 500, fontSize: "0.9375rem", padding: "0.85rem 2rem", borderRadius: "8px", border: "1px solid #E8DECE", textDecoration: "none", transition: "background-color 150ms" }}
                   onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#e9edc9")}
                   onMouseLeave={e => (e.currentTarget.style.backgroundColor = "#faedcd")}>
                   Ya tengo cuenta
                 </Link>
               )}
             </div>
+
+            <p style={{ marginTop: "1rem", fontSize: "0.8125rem", color: "#A8957D" }}>Sin tarjeta de crédito · Gratis para empezar · Listo en 2 minutos</p>
           </div>
 
           {/* Mockup */}
@@ -208,17 +304,21 @@ export default function LandingClient({ isLoggedIn, displayName, initials }: Pro
         <section id="como-funciona" style={{ backgroundColor: "#faedcd", borderTop: "1px solid #E8DECE", borderBottom: "1px solid #E8DECE", padding: "5rem 1.5rem" }}>
           <div className="mx-auto max-w-5xl">
             <div className="text-center mb-14">
-              <h2 style={{ fontFamily: "var(--font-playfair), serif", fontSize: "clamp(1.75rem, 4vw, 2.25rem)", fontWeight: 600, color: "#2C2416", marginBottom: "1rem" }}>¿Tu operación todavía vive en WhatsApp y hojas de cálculo?</h2>
-              <p style={{ color: "#7A6A52", fontSize: "1rem", maxWidth: "34rem", margin: "0 auto" }}>La comunicación desordenada cuesta tiempo, dinero y clientes.</p>
+              <h2 style={{ fontFamily: "var(--font-playfair), serif", fontSize: "clamp(1.75rem, 4vw, 2.25rem)", fontWeight: 600, color: "#2C2416", marginBottom: "1rem" }}>
+                ¿Cuánto tiempo pierdes buscando mensajes de hace tres semanas?
+              </h2>
+              <p style={{ color: "#7A6A52", fontSize: "1rem", maxWidth: "36rem", margin: "0 auto" }}>
+                Si gestionas una propiedad o un equipo, ya sabes lo que cuesta el desorden. Habitta lo soluciona.
+              </p>
             </div>
             <div className="grid md:grid-cols-3 gap-6">
               {[
-                { title: "Sin trazabilidad",   desc: "Las solicitudes se pierden. Nadie sabe quién está haciendo qué ni el estado real de un requerimiento.", dot: "#E07B54" },
-                { title: "Sin centralización", desc: "Datos dispersos en 5 chats, docenas de correos y archivos Excel desactualizados.",                       dot: "#d4a373" },
-                { title: "Sin visibilidad",     desc: "Gerenciar a ciegas. Sin métricas claras de resolución, tiempos ni volumen de operación.",               dot: "#6B9AB8" },
-              ].map(({ title, desc, dot }) => (
+                { emoji: "😤", title: "Solicitudes que se pierden",   desc: "Alguien pidió algo por WhatsApp, otra persona lo hizo por correo y nadie sabe quién lo está resolviendo.", dot: "#E07B54" },
+                { emoji: "📊", title: "Datos regados por todas partes", desc: "Cinco grupos de WhatsApp, cuatro hojas de Excel y ninguna es la versión final. Eso ya no puede seguir así.",  dot: "#d4a373" },
+                { emoji: "🤷", title: "Nadie sabe qué está pasando",  desc: "¿Cuántas solicitudes están abiertas? ¿Cuáles llevan más de una semana sin respuesta? Nadie lo sabe.",          dot: "#6B9AB8" },
+              ].map(({ emoji, title, desc, dot }) => (
                 <div key={title} style={{ backgroundColor: "#fefae0", border: "1px solid #E8DECE", borderRadius: 12, padding: "1.75rem", boxShadow: "0 1px 3px rgba(44,36,22,0.06)" }}>
-                  <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", backgroundColor: dot, marginBottom: "1rem" }} />
+                  <span style={{ fontSize: "1.75rem", display: "block", marginBottom: "0.75rem" }}>{emoji}</span>
                   <h3 style={{ fontSize: "1.0625rem", fontWeight: 600, color: "#2C2416", marginBottom: "0.5rem" }}>{title}</h3>
                   <p style={{ fontSize: "0.875rem", color: "#7A6A52", lineHeight: 1.65 }}>{desc}</p>
                 </div>
@@ -227,11 +327,38 @@ export default function LandingClient({ isLoggedIn, displayName, initials }: Pro
           </div>
         </section>
 
-        {/* ── CARACTERÍSTICAS ── */}
-        <section id="caracteristicas" style={{ backgroundColor: "#fefae0", padding: "5rem 1.5rem" }}>
+        {/* ── CÓMO FUNCIONA (3 PASOS) ── */}
+        <section style={{ backgroundColor: "#fefae0", padding: "5rem 1.5rem" }}>
+          <div className="mx-auto max-w-4xl">
+            <div className="text-center mb-14">
+              <h2 style={{ fontFamily: "var(--font-playfair), serif", fontSize: "clamp(1.75rem, 4vw, 2.25rem)", fontWeight: 600, color: "#2C2416" }}>
+                Empezar es muy fácil
+              </h2>
+            </div>
+            <div className="grid md:grid-cols-3 gap-8">
+              {STEPS.map(({ num, title, desc, color }) => (
+                <div key={num} className="text-center">
+                  <div style={{ width: 56, height: 56, borderRadius: "50%", backgroundColor: color, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: "1.125rem", margin: "0 auto 1.25rem" }}>
+                    {num}
+                  </div>
+                  <h3 style={{ fontSize: "1.0625rem", fontWeight: 600, color: "#2C2416", marginBottom: "0.5rem" }}>{title}</h3>
+                  <p style={{ fontSize: "0.875rem", color: "#7A6A52", lineHeight: 1.65 }}>{desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── QUÉ PUEDES HACER ── */}
+        <section id="que-puedes-hacer" style={{ backgroundColor: "#faedcd", borderTop: "1px solid #E8DECE", borderBottom: "1px solid #E8DECE", padding: "5rem 1.5rem" }}>
           <div className="mx-auto max-w-5xl">
             <div className="text-center mb-14">
-              <h2 style={{ fontFamily: "var(--font-playfair), serif", fontSize: "clamp(1.75rem, 4vw, 2.25rem)", fontWeight: 600, color: "#2C2416" }}>Todo lo que necesitas para operar con claridad</h2>
+              <h2 style={{ fontFamily: "var(--font-playfair), serif", fontSize: "clamp(1.75rem, 4vw, 2.25rem)", fontWeight: 600, color: "#2C2416" }}>
+                Todo lo que puedes hacer con Habitta
+              </h2>
+              <p style={{ color: "#7A6A52", fontSize: "1rem", maxWidth: "34rem", margin: "1rem auto 0" }}>
+                Sin tecnicismos. Sin cursos. Si sabes usar WhatsApp, sabes usar Habitta.
+              </p>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {FEATURES.map(({ icon: Icon, title, desc, bg, dot }) => (
@@ -248,17 +375,79 @@ export default function LandingClient({ isLoggedIn, displayName, initials }: Pro
           </div>
         </section>
 
-        {/* ── SECTORES ── */}
-        <section id="sectores" style={{ backgroundColor: "#e9edc9", borderTop: "1px solid #E8DECE", borderBottom: "1px solid #E8DECE", padding: "5rem 1.5rem" }}>
+        {/* ── IA HIGHLIGHT ── */}
+        <section style={{ backgroundColor: "#fefae0", padding: "5rem 1.5rem" }}>
+          <div className="mx-auto max-w-5xl">
+            <div style={{ backgroundColor: "#2C2416", borderRadius: 16, padding: "3rem 2rem", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1rem", boxShadow: "0 8px 32px rgba(44,36,22,0.15)" }}>
+              <div style={{ width: 52, height: 52, borderRadius: "50%", backgroundColor: "#d4a373", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Sparkles size={24} color="#fff" />
+              </div>
+              <h2 style={{ fontFamily: "var(--font-playfair), serif", fontSize: "clamp(1.5rem, 3.5vw, 2rem)", fontWeight: 700, color: "#fefae0", maxWidth: "30rem", lineHeight: 1.3 }}>
+                Un asistente inteligente que trabaja contigo
+              </h2>
+              <p style={{ color: "#A8957D", fontSize: "1rem", maxWidth: "34rem", lineHeight: 1.7 }}>
+                Dile al asistente lo que necesitas y él lo hace: crea una solicitud, genera un documento, le manda un mensaje a un residente. En segundos. Sin buscar menús ni llenar formularios.
+              </p>
+              <div className="grid sm:grid-cols-3 gap-4 mt-4" style={{ width: "100%", maxWidth: "42rem" }}>
+                {[
+                  { icon: BellRing, text: "\"Envíale un recordatorio de pago a Carlos\"" },
+                  { icon: FileText, text: "\"Genera el acta de la reunión de hoy\"" },
+                  { icon: MessageSquareText, text: "\"Crea una solicitud de mantenimiento urgente\"" },
+                ].map(({ icon: Icon, text }) => (
+                  <div key={text} style={{ backgroundColor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "1rem 0.875rem", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
+                    <Icon size={16} color="#d4a373" />
+                    <p style={{ fontSize: "0.8125rem", color: "#C8B99A", lineHeight: 1.5, fontStyle: "italic" }}>{text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── PARA QUIÉN ── */}
+        <section id="para-quien" style={{ backgroundColor: "#e9edc9", borderTop: "1px solid #E8DECE", borderBottom: "1px solid #E8DECE", padding: "5rem 1.5rem" }}>
           <div className="mx-auto max-w-5xl">
             <div className="text-center mb-14">
-              <h2 style={{ fontFamily: "var(--font-playfair), serif", fontSize: "clamp(1.75rem, 4vw, 2.25rem)", fontWeight: 600, color: "#2C2416" }}>Diseñado para múltiples sectores</h2>
+              <h2 style={{ fontFamily: "var(--font-playfair), serif", fontSize: "clamp(1.75rem, 4vw, 2.25rem)", fontWeight: 600, color: "#2C2416" }}>
+                ¿Esto es para ti?
+              </h2>
+              <p style={{ color: "#7A6A52", fontSize: "1rem", maxWidth: "32rem", margin: "1rem auto 0" }}>
+                Si administras personas y espacios físicos, la respuesta es sí.
+              </p>
             </div>
             <div className="grid sm:grid-cols-2 gap-5">
-              {SECTORS.map(({ title, desc, accent }) => (
+              {SECTORS.map(({ emoji, title, desc, accent }) => (
                 <div key={title} style={{ backgroundColor: "#fefae0", border: "1px solid #E8DECE", borderLeft: `3px solid ${accent}`, borderRadius: "0 12px 12px 0", padding: "1.5rem", boxShadow: "0 1px 3px rgba(44,36,22,0.06)" }}>
+                  <span style={{ fontSize: "1.5rem", display: "block", marginBottom: "0.5rem" }}>{emoji}</span>
                   <h3 style={{ fontSize: "1rem", fontWeight: 600, color: "#2C2416", marginBottom: "0.5rem" }}>{title}</h3>
                   <p style={{ fontSize: "0.875rem", color: "#7A6A52", lineHeight: 1.65 }}>{desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── TESTIMONIOS ── */}
+        <section style={{ backgroundColor: "#fefae0", padding: "5rem 1.5rem" }}>
+          <div className="mx-auto max-w-5xl">
+            <div className="text-center mb-14">
+              <h2 style={{ fontFamily: "var(--font-playfair), serif", fontSize: "clamp(1.75rem, 4vw, 2.25rem)", fontWeight: 600, color: "#2C2416" }}>
+                Lo que dicen quienes ya lo usan
+              </h2>
+            </div>
+            <div className="grid md:grid-cols-3 gap-5">
+              {TESTIMONIALS.map(({ text, name, role, color }) => (
+                <div key={name} style={{ backgroundColor: "#faedcd", border: "1px solid #E8DECE", borderRadius: 12, padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+                  <p style={{ fontSize: "0.9rem", color: "#5A4A36", lineHeight: 1.7, fontStyle: "italic" }}>{text}</p>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginTop: "auto" }}>
+                    <div style={{ width: 36, height: 36, borderRadius: "50%", backgroundColor: color, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: "0.8rem", flexShrink: 0 }}>
+                      {name.split(" ").map(w => w[0]).join("")}
+                    </div>
+                    <div>
+                      <p style={{ fontWeight: 600, fontSize: "0.875rem", color: "#2C2416" }}>{name}</p>
+                      <p style={{ fontSize: "0.75rem", color: "#7A6A52" }}>{role}</p>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -268,14 +457,19 @@ export default function LandingClient({ isLoggedIn, displayName, initials }: Pro
         {/* ── CTA FINAL ── */}
         <section style={{ backgroundColor: "#faedcd", padding: "5rem 1.5rem", borderTop: "1px solid #E8DECE" }}>
           <div className="mx-auto max-w-2xl text-center">
-            <h2 style={{ fontFamily: "var(--font-playfair), serif", fontSize: "clamp(1.75rem, 4vw, 2.25rem)", fontWeight: 700, color: "#2C2416", marginBottom: "1rem" }}>Empieza a operar con orden hoy</h2>
-            <p style={{ color: "#7A6A52", fontSize: "1rem", marginBottom: "2rem" }}>Únete a docenas de empresas que dejaron atrás el caos y abrazaron la eficiencia de Habitta.</p>
+            <h2 style={{ fontFamily: "var(--font-playfair), serif", fontSize: "clamp(1.75rem, 4vw, 2.5rem)", fontWeight: 700, color: "#2C2416", marginBottom: "1rem" }}>
+              Pruébalo hoy. Es gratis para empezar.
+            </h2>
+            <p style={{ color: "#7A6A52", fontSize: "1.0625rem", marginBottom: "2rem", lineHeight: 1.7 }}>
+              En menos de 5 minutos tienes tu panel listo. Sin instalar nada, sin pagar por adelantado, sin complicaciones.
+            </p>
             <Link href={primaryHref}
-              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", backgroundColor: "#d4a373", color: "#fff", fontWeight: 600, fontSize: "0.9375rem", padding: "0.75rem 2.25rem", borderRadius: "8px", textDecoration: "none", transition: "background-color 150ms" }}
+              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", backgroundColor: "#d4a373", color: "#fff", fontWeight: 700, fontSize: "1rem", padding: "0.875rem 2.5rem", borderRadius: "8px", textDecoration: "none", transition: "background-color 150ms" }}
               onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#C4915F")}
               onMouseLeave={e => (e.currentTarget.style.backgroundColor = "#d4a373")}>
-              {primaryLabel}
+              {primaryLabel} →
             </Link>
+            <p style={{ marginTop: "1rem", fontSize: "0.8125rem", color: "#A8957D" }}>Sin tarjeta de crédito · Listo en 2 minutos</p>
           </div>
         </section>
       </main>
@@ -289,11 +483,11 @@ export default function LandingClient({ isLoggedIn, displayName, initials }: Pro
           </div>
           <div style={{ display: "flex", gap: "1.5rem", fontSize: "0.875rem", alignItems: "center" }}>
             {isLoggedIn ? (
-              <Link href="/dashboard" style={{ color: "#d4a373", textDecoration: "none" }}>Mi dashboard</Link>
+              <Link href="/dashboard" style={{ color: "#d4a373", textDecoration: "none" }}>Mi panel</Link>
             ) : (
               <>
                 <Link href="/login" style={{ color: "#A8957D", textDecoration: "none" }}>Ingresar</Link>
-                <Link href="/register" style={{ color: "#d4a373", textDecoration: "none" }}>Crear cuenta</Link>
+                <Link href="/register" style={{ color: "#d4a373", textDecoration: "none" }}>Crear cuenta gratis</Link>
               </>
             )}
           </div>
