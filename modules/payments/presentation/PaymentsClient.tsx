@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { CheckCircle, Send, AlertTriangle, Clock, CreditCard, RefreshCw } from "lucide-react";
+import { CheckCircle, Send, AlertTriangle, Clock, CreditCard, RefreshCw, X, Smartphone } from "lucide-react";
 import { HabittaSpinner } from "@/modules/core/components/HabittaSpinner";
-import { markPaymentPaid, sendTelegramReminder, seedDemoPayments, type Payment } from "@/modules/payments/application/payments.actions";
+import { sendTelegramReminder, seedDemoPayments, type Payment } from "@/modules/payments/application/payments.actions";
 
 function daysUntil(dateStr: string): number {
   const due = new Date(dateStr + "T00:00:00");
@@ -36,102 +36,200 @@ function StatusBadge({ status, days }: { status: Payment["status"]; days: number
   );
 }
 
-type ModalStep = "confirm" | "processing" | "success";
+// ─── Telegram Payment Form Modal ──────────────────────────────────────────────
 
-function PaymentModal({ payment, orgId, onClose, onPaid }: {
+type SendStep = "form" | "sending" | "sent" | "error";
+
+const PAYMENT_METHODS = [
+  { id: "nequi",       label: "Nequi",        icon: "💳" },
+  { id: "daviplata",   label: "Daviplata",     icon: "📱" },
+  { id: "transferencia", label: "Transferencia", icon: "🏦" },
+  { id: "efectivo",    label: "Efectivo",      icon: "💵" },
+];
+
+function TelegramPaymentModal({ payment, orgId, onClose }: {
   payment: Payment;
   orgId: string;
   onClose: () => void;
-  onPaid: () => void;
 }) {
-  const [step, setStep] = useState<ModalStep>("confirm");
+  const [step, setStep] = useState<SendStep>("form");
+  const [method, setMethod] = useState("");
+  const [ref, setRef] = useState("");
   const [, startT] = useTransition();
 
-  const handlePay = () => {
-    setStep("processing");
+  const canSend = method !== "";
+
+  const handleSend = () => {
+    if (!canSend) return;
+    setStep("sending");
     startT(async () => {
-      await new Promise((r) => setTimeout(r, 1800));
-      await markPaymentPaid(payment.id, orgId);
-      setStep("success");
-      setTimeout(onPaid, 1500);
+      try {
+        // Build a demo Telegram message with the form data
+        const demoMsg = [
+          `💳 *Solicitud de pago*`,
+          ``,
+          `Hola *${payment.resident_name}*,`,
+          `Te enviamos el formulario de pago para el siguiente recibo:`,
+          ``,
+          `📋 *Concepto:* ${payment.concept}`,
+          `💰 *Monto:* ${formatCOP(payment.amount)}`,
+          `📅 *Vencimiento:* ${new Date(payment.due_date + "T00:00:00").toLocaleDateString("es-CO")}`,
+          ``,
+          `*Método seleccionado:* ${PAYMENT_METHODS.find(m => m.id === method)?.icon} ${PAYMENT_METHODS.find(m => m.id === method)?.label}`,
+          ref ? `*Referencia:* ${ref}` : null,
+          ``,
+          `Por favor confirma tu pago respondiendo este mensaje. ¡Gracias! 🏠`,
+        ].filter(Boolean).join("\n");
+
+        // Reuse the existing reminder endpoint — it already has the Telegram plumbing
+        await sendTelegramReminder(payment.id, orgId, demoMsg);
+        setStep("sent");
+      } catch {
+        setStep("error");
+      }
     });
   };
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget && step !== "processing") onClose(); }}
+      onClick={(e) => { if (e.target === e.currentTarget && step !== "sending") onClose(); }}
     >
       <div className="bg-[var(--background)] rounded-2xl shadow-2xl border border-[var(--border)] w-full max-w-md mx-4 overflow-hidden">
 
+        {/* Header */}
         <div className="px-6 py-4 flex items-center gap-3" style={{ backgroundColor: "#d4a373" }}>
-          <CreditCard className="w-5 h-5 text-white" />
-          <h2 className="text-white font-semibold">Procesar pago</h2>
+          <Smartphone className="w-5 h-5 text-white" />
+          <h2 className="text-white font-semibold flex-1">Enviar formulario de pago</h2>
+          {step !== "sending" && (
+            <button onClick={onClose} className="text-white/70 hover:text-white transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         <div className="px-6 py-6">
-          {step === "confirm" && (
-            <div className="space-y-4">
-              <div className="rounded-xl bg-[var(--sidebar-bg)] border border-[var(--border)] p-4 space-y-2">
+
+          {/* FORM */}
+          {step === "form" && (
+            <div className="space-y-5">
+
+              {/* Resumen del recibo */}
+              <div className="rounded-xl bg-[var(--sidebar-bg)] border border-[var(--border)] p-4 space-y-1.5">
                 <div className="flex justify-between text-sm">
-                  <span className="text-[var(--foreground)]/60">Residente</span>
+                  <span className="text-[var(--foreground)]/50">Residente</span>
                   <span className="font-medium">{payment.resident_name}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-[var(--foreground)]/60">Concepto</span>
+                  <span className="text-[var(--foreground)]/50">Concepto</span>
                   <span className="font-medium">{payment.concept}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-[var(--foreground)]/60">Vencimiento</span>
-                  <span className="font-medium">{new Date(payment.due_date + "T00:00:00").toLocaleDateString("es-CO")}</span>
-                </div>
                 <div className="border-t border-[var(--border)] pt-2 flex justify-between">
-                  <span className="font-semibold">Total</span>
-                  <span className="font-bold text-lg" style={{ color: "#d4a373" }}>{formatCOP(payment.amount)}</span>
+                  <span className="font-semibold text-sm">Total</span>
+                  <span className="font-bold" style={{ color: "#d4a373" }}>{formatCOP(payment.amount)}</span>
                 </div>
               </div>
 
-              <div className="rounded-xl border-2 border-dashed border-[var(--border)] p-4 text-center text-sm text-[var(--foreground)]/50">
-                🔒 Demo — no se procesa ningún cobro real
+              {/* Método de pago */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-[var(--foreground)]/60 uppercase tracking-wide">
+                  Método de pago <span className="text-red-400">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {PAYMENT_METHODS.map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={() => setMethod(m.id)}
+                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+                        method === m.id
+                          ? "border-[#d4a373] bg-[#d4a37315] text-[#c8935f]"
+                          : "border-[var(--border)] hover:bg-[var(--sidebar-bg)]"
+                      }`}
+                    >
+                      <span>{m.icon}</span> {m.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <div className="flex gap-3">
-                <button
-                  onClick={onClose}
-                  className="flex-1 py-2.5 rounded-xl border border-[var(--border)] text-sm font-medium hover:bg-[var(--sidebar-bg)] transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handlePay}
-                  className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold transition-opacity hover:opacity-90"
-                  style={{ backgroundColor: "#d4a373" }}
-                >
-                  Confirmar pago
-                </button>
+              {/* Referencia opcional */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[var(--foreground)]/60 uppercase tracking-wide">
+                  Referencia / Número de cuenta <span className="text-[var(--foreground)]/30">(opcional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={ref}
+                  onChange={(e) => setRef(e.target.value)}
+                  placeholder="Ej: 3001234567 o cuenta 123-456"
+                  className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-sm focus:outline-none focus:ring-2 focus:ring-[#d4a373]/40"
+                />
               </div>
+
+              {/* Demo notice */}
+              <div className="rounded-xl border border-dashed border-[var(--border)] p-3 text-center text-xs text-[var(--foreground)]/40">
+                📲 Demo — se enviará un mensaje de prueba al Telegram del residente
+              </div>
+
+              <button
+                onClick={handleSend}
+                disabled={!canSend}
+                className="w-full py-3 rounded-xl text-white text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2"
+                style={{ backgroundColor: "#d4a373" }}
+              >
+                <Send className="w-4 h-4" />
+                Enviar al Telegram del residente
+              </button>
             </div>
           )}
 
-          {step === "processing" && (
-            <div className="py-8 flex flex-col items-center gap-4">
+          {/* SENDING */}
+          {step === "sending" && (
+            <div className="py-10 flex flex-col items-center gap-4">
               <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: "#d4a37318" }}>
                 <HabittaSpinner size={40} />
               </div>
-              <p className="text-sm font-medium text-[var(--foreground)]/70">Procesando pago…</p>
-              <p className="text-xs text-[var(--foreground)]/40">Por favor espera</p>
+              <p className="text-sm font-medium text-[var(--foreground)]/70">Enviando formulario por Telegram…</p>
             </div>
           )}
 
-          {step === "success" && (
-            <div className="py-8 flex flex-col items-center gap-4">
+          {/* SENT */}
+          {step === "sent" && (
+            <div className="py-10 flex flex-col items-center gap-4">
               <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center">
                 <CheckCircle className="w-8 h-8 text-emerald-500" />
               </div>
-              <div className="text-center">
-                <p className="font-semibold text-emerald-700">¡Pago exitoso!</p>
-                <p className="text-sm text-[var(--foreground)]/60 mt-1">{formatCOP(payment.amount)} registrado correctamente</p>
+              <div className="text-center space-y-1">
+                <p className="font-semibold text-emerald-700">¡Formulario enviado!</p>
+                <p className="text-sm text-[var(--foreground)]/50">
+                  {payment.resident_name} recibirá el formulario en su Telegram
+                </p>
               </div>
+              <button
+                onClick={onClose}
+                className="mt-2 px-5 py-2 rounded-xl border border-[var(--border)] text-sm font-medium hover:bg-[var(--sidebar-bg)] transition-colors"
+              >
+                Cerrar
+              </button>
+            </div>
+          )}
+
+          {/* ERROR */}
+          {step === "error" && (
+            <div className="py-10 flex flex-col items-center gap-4">
+              <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center">
+                <AlertTriangle className="w-8 h-8 text-red-400" />
+              </div>
+              <div className="text-center space-y-1">
+                <p className="font-semibold text-red-600">Error al enviar</p>
+                <p className="text-sm text-[var(--foreground)]/50">Verifica que el residente tenga Telegram configurado</p>
+              </div>
+              <button
+                onClick={() => setStep("form")}
+                className="mt-2 px-5 py-2 rounded-xl border border-[var(--border)] text-sm font-medium hover:bg-[var(--sidebar-bg)] transition-colors"
+              >
+                Reintentar
+              </button>
             </div>
           )}
         </div>
@@ -139,6 +237,8 @@ function PaymentModal({ payment, orgId, onClose, onPaid }: {
     </div>
   );
 }
+
+// ─── Main Component ────────────────────────────────────────────────────────────
 
 export function PaymentsClient({ initialPayments, orgId }: { initialPayments: Payment[]; orgId: string }) {
   const [payments, setPayments]         = useState<Payment[]>(initialPayments);
@@ -151,13 +251,6 @@ export function PaymentsClient({ initialPayments, orgId }: { initialPayments: Pa
   const paid         = payments.filter((p) => p.status === "paid");
   const totalPending = pending.reduce((s, p) => s + p.amount, 0);
   const totalOverdue = overdue.reduce((s, p) => s + p.amount, 0);
-
-  const handlePaid = () => {
-    setPayments((prev) => prev.map((p) =>
-      p.id === selectedPayment?.id ? { ...p, status: "paid" as const, paid_at: new Date().toISOString() } : p
-    ));
-    setSelected(null);
-  };
 
   const handleReminder = async (payment: Payment) => {
     setReminder((prev) => ({ ...prev, [payment.id]: "sending" }));
@@ -259,7 +352,7 @@ export function PaymentsClient({ initialPayments, orgId }: { initialPayments: Pa
                           <button
                             onClick={() => handleReminder(p)}
                             disabled={rs === "sending"}
-                            title={p.telegram_chat_id ? "Enviar reminder por Telegram" : "Sin Telegram configurado — se enviará igual como demo"}
+                            title={p.telegram_chat_id ? "Enviar recordatorio por Telegram" : "Sin Telegram configurado — se enviará igual como demo"}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                               rs === "sent"    ? "bg-emerald-50 border-emerald-200 text-emerald-700" :
                               rs === "error"   ? "bg-red-50 border-red-200 text-red-700" :
@@ -288,11 +381,10 @@ export function PaymentsClient({ initialPayments, orgId }: { initialPayments: Pa
       </div>
 
       {selectedPayment && (
-        <PaymentModal
+        <TelegramPaymentModal
           payment={selectedPayment}
           orgId={orgId}
           onClose={() => setSelected(null)}
-          onPaid={handlePaid}
         />
       )}
     </div>
