@@ -22,7 +22,7 @@ interface Props {
 
 export function DocumentsView({ orgId, orgName, userId, initialDocs, supabaseUrl, supabaseAnonKey }: Props) {
   const [messages, setMessages] = useState<ChatMsg[]>([
-    { role: 'assistant', content: `Hola 👋 Soy el asistente de documentos de **${orgName}**. Dime qué documento necesitas generar y te ayudaré a crearlo en PDF.` },
+    { role: 'assistant', content: `Hola 👋 Soy el asistente de documentos de **${orgName}**. Solo puedo generar documentos oficiales usando los datos reales de tu organización. ¿Qué documento necesitas?` },
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -38,7 +38,6 @@ export function DocumentsView({ orgId, orgName, userId, initialDocs, supabaseUrl
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Load org context (real data) and chat sessions
   useEffect(() => {
     async function loadData() {
       const [ctxRes, sessRes] = await Promise.all([
@@ -71,6 +70,13 @@ export function DocumentsView({ orgId, orgName, userId, initialDocs, supabaseUrl
         body: JSON.stringify({ action: 'confirm', prompt, organization_id: orgId, org_context: orgContext }),
       });
       const data = await res.json();
+
+      // Off-topic guard — the AI refused to generate a document
+      if (data.off_topic) {
+        setMessages(prev => [...prev, { role: 'assistant', content: data.message ?? 'Solo puedo ayudarte a generar documentos oficiales de esta organización. ¿Qué documento necesitas?' }]);
+        return;
+      }
+
       if (!data.ok) throw new Error(data.error);
       setMessages(prev => [...prev, { role: 'confirmation', data: data.confirmation, prompt }]);
     } catch (e: any) {
@@ -176,12 +182,10 @@ export function DocumentsView({ orgId, orgName, userId, initialDocs, supabaseUrl
             <p className="text-sm font-semibold text-[var(--foreground)]">Asistente de Documentos</p>
             <p className="text-xs text-[var(--foreground)]/40">{orgName}</p>
           </div>
-          {orgContext && (
-            <span className="ml-auto text-[10px] text-emerald-500 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
-              Datos cargados
-            </span>
-          )}
+          <span className={`ml-auto text-[10px] flex items-center gap-1 ${orgContext ? 'text-emerald-500' : 'text-[var(--foreground)]/30'}`}>
+            <span className={`w-1.5 h-1.5 rounded-full inline-block ${orgContext ? 'bg-emerald-400' : 'bg-[var(--foreground)]/20'}`} />
+            {orgContext ? 'Datos cargados' : 'Cargando datos...'}
+          </span>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
@@ -263,7 +267,7 @@ export function DocumentsView({ orgId, orgName, userId, initialDocs, supabaseUrl
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-              placeholder="Ej: Genera una circular de mantenimiento de zonas comunes..."
+              placeholder="Ej: Genera un reporte del cliente Carlos Galvis..."
               disabled={loading}
               className="flex-1 resize-none rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#d4a373]/40 disabled:opacity-50"
             />
