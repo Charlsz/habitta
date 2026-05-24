@@ -1,0 +1,1 @@
+export { SLABadge } from "./SLABadge";

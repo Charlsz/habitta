@@ -4,6 +4,7 @@ import { getAssetsByOrganization } from "@/modules/assets/infrastructure/asset.r
 import { getTickets } from "@/modules/tickets/infrastructure/ticket.repository";
 import { TicketPriorityBadge, TicketStatusBadge } from "@/modules/tickets/presentation/ticket-badge";
 import { CategoryBadge } from "@/modules/ticket-categories/presentation/category-badge";
+import { SLABadge } from "@/modules/tickets/components/SLABadge";
 import Link from "next/link";
 import { TicketStatus } from "@/modules/tickets/domain/ticket.schema";
 
@@ -21,7 +22,7 @@ const STATUS_OPTIONS = [
 export default async function TicketsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; asset?: string; org?: string }>;
+  searchParams: Promise<{ status?: string; asset?: string; org?: string; sla?: string }>;
 }) {
   const params      = await searchParams;
   const user        = await requireAuth();
@@ -69,6 +70,15 @@ export default async function TicketsPage({
               {assets.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           </div>
+          <div>
+            <label className="text-xs font-semibold habitta-muted uppercase">SLA</label>
+            <select name="sla" defaultValue={params.sla || "all"} className="block w-40 mt-1 border border-[var(--border)] rounded-md text-sm p-2 bg-white">
+              <option value="all">🟠 Todos</option>
+              <option value="overdue">🔴 Vencidos</option>
+              <option value="at_risk">🟡 En riesgo</option>
+              <option value="on_track">🟢 A tiempo</option>
+            </select>
+          </div>
           <div className="flex-1 flex items-end justify-end">
             <button type="submit" className="habitta-secondary px-4 py-2 text-sm">Filtrar</button>
           </div>
@@ -104,6 +114,12 @@ export default async function TicketsPage({
                     ) : (
                       <span className="text-xs text-red-400 font-medium">Sin asignar</span>
                     )}
+                    {/* SLA badge en línea */}
+                    <SLABadge
+                      priority={t.priority}
+                      createdAt={t.created_at}
+                      status={t.status}
+                    />
                   </div>
                   <h3 className="font-semibold text-[var(--foreground)] truncate">{t.title}</h3>
                   <p className="habitta-muted text-sm line-clamp-1 mt-1">{t.description}</p>
