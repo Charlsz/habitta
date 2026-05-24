@@ -1,5 +1,2 @@
-export * from "./Badge";
-export * from "./Button";
-export * from "./Card";
-export * from "./Input";
-export * from "./Tabs";
+export { Button } from "./Button";
+export { SidebarNav } from "./SidebarNav";
