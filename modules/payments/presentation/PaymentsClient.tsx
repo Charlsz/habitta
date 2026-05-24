@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { CheckCircle, Send, Loader2, AlertTriangle, Clock, CreditCard, RefreshCw } from "lucide-react";
+import { CheckCircle, Send, AlertTriangle, Clock, CreditCard, RefreshCw } from "lucide-react";
+import { HabittaSpinner } from "@/modules/core/components/HabittaSpinner";
 import { markPaymentPaid, sendTelegramReminder, seedDemoPayments, type Payment } from "@/modules/payments/application/payments.actions";
 
-// ── Helpers ───────────────────────────────────────────────────────────────
 function daysUntil(dateStr: string): number {
   const due = new Date(dateStr + "T00:00:00");
   const now = new Date();
@@ -36,7 +36,6 @@ function StatusBadge({ status, days }: { status: Payment["status"]; days: number
   );
 }
 
-// ── Payment Modal ─────────────────────────────────────────────────────────
 type ModalStep = "confirm" | "processing" | "success";
 
 function PaymentModal({ payment, orgId, onClose, onPaid }: {
@@ -51,7 +50,7 @@ function PaymentModal({ payment, orgId, onClose, onPaid }: {
   const handlePay = () => {
     setStep("processing");
     startT(async () => {
-      await new Promise((r) => setTimeout(r, 1800)); // simulate network
+      await new Promise((r) => setTimeout(r, 1800));
       await markPaymentPaid(payment.id, orgId);
       setStep("success");
       setTimeout(onPaid, 1500);
@@ -59,18 +58,18 @@ function PaymentModal({ payment, orgId, onClose, onPaid }: {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget && step !== "processing") onClose(); }}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget && step !== "processing") onClose(); }}
+    >
       <div className="bg-[var(--background)] rounded-2xl shadow-2xl border border-[var(--border)] w-full max-w-md mx-4 overflow-hidden">
 
-        {/* Header */}
         <div className="px-6 py-4 flex items-center gap-3" style={{ backgroundColor: "#d4a373" }}>
           <CreditCard className="w-5 h-5 text-white" />
           <h2 className="text-white font-semibold">Procesar pago</h2>
         </div>
 
-        {/* Body */}
         <div className="px-6 py-6">
-
           {step === "confirm" && (
             <div className="space-y-4">
               <div className="rounded-xl bg-[var(--sidebar-bg)] border border-[var(--border)] p-4 space-y-2">
@@ -97,10 +96,17 @@ function PaymentModal({ payment, orgId, onClose, onPaid }: {
               </div>
 
               <div className="flex gap-3">
-                <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[var(--border)] text-sm font-medium hover:bg-[var(--sidebar-bg)] transition-colors">
+                <button
+                  onClick={onClose}
+                  className="flex-1 py-2.5 rounded-xl border border-[var(--border)] text-sm font-medium hover:bg-[var(--sidebar-bg)] transition-colors"
+                >
                   Cancelar
                 </button>
-                <button onClick={handlePay} className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold transition-opacity hover:opacity-90" style={{ backgroundColor: "#d4a373" }}>
+                <button
+                  onClick={handlePay}
+                  className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: "#d4a373" }}
+                >
                   Confirmar pago
                 </button>
               </div>
@@ -109,8 +115,8 @@ function PaymentModal({ payment, orgId, onClose, onPaid }: {
 
           {step === "processing" && (
             <div className="py-8 flex flex-col items-center gap-4">
-              <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ backgroundColor: "#d4a37320" }}>
-                <Loader2 className="w-7 h-7 animate-spin" style={{ color: "#d4a373" }} />
+              <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: "#d4a37318" }}>
+                <HabittaSpinner size={40} />
               </div>
               <p className="text-sm font-medium text-[var(--foreground)]/70">Procesando pago…</p>
               <p className="text-xs text-[var(--foreground)]/40">Por favor espera</p>
@@ -134,16 +140,15 @@ function PaymentModal({ payment, orgId, onClose, onPaid }: {
   );
 }
 
-// ── Main Client Component ─────────────────────────────────────────────────
 export function PaymentsClient({ initialPayments, orgId }: { initialPayments: Payment[]; orgId: string }) {
   const [payments, setPayments]         = useState<Payment[]>(initialPayments);
   const [selectedPayment, setSelected]  = useState<Payment | null>(null);
   const [reminderStates, setReminder]   = useState<Record<string, "idle" | "sending" | "sent" | "error">>({});
   const [seedPending, startSeed]        = useTransition();
 
-  const pending  = payments.filter((p) => p.status === "pending");
-  const overdue  = payments.filter((p) => p.status === "overdue");
-  const paid     = payments.filter((p) => p.status === "paid");
+  const pending      = payments.filter((p) => p.status === "pending");
+  const overdue      = payments.filter((p) => p.status === "overdue");
+  const paid         = payments.filter((p) => p.status === "paid");
   const totalPending = pending.reduce((s, p) => s + p.amount, 0);
   const totalOverdue = overdue.reduce((s, p) => s + p.amount, 0);
 
@@ -168,7 +173,6 @@ export function PaymentsClient({ initialPayments, orgId }: { initialPayments: Pa
     });
   };
 
-  // ── Empty state ────────────────────────────────────────────────────────
   if (payments.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-5">
@@ -183,23 +187,20 @@ export function PaymentsClient({ initialPayments, orgId }: { initialPayments: Pa
           className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-60 transition-opacity hover:opacity-90"
           style={{ backgroundColor: "#d4a373" }}
         >
-          {seedPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+          {seedPending ? <HabittaSpinner size={18} /> : <RefreshCw className="w-4 h-4" />}
           Generar pagos demo
         </button>
       </div>
     );
   }
 
-  // ── Summary cards ─────────────────────────────────────────────────────
   return (
-    <div className="p-6 space-y-6 max-w-5xl">
-
-      {/* KPI row */}
+    <div className="space-y-6 max-w-5xl">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: "Por cobrar",  value: formatCOP(totalPending), color: "#3b82f6", count: pending.length },
-          { label: "Vencidos",    value: formatCOP(totalOverdue), color: "#ef4444", count: overdue.length },
-          { label: "Pagados",     value: String(paid.length),     color: "#10b981", count: paid.length, isCount: true },
+          { label: "Por cobrar",    value: formatCOP(totalPending), color: "#3b82f6", count: pending.length },
+          { label: "Vencidos",      value: formatCOP(totalOverdue), color: "#ef4444", count: overdue.length },
+          { label: "Pagados",       value: String(paid.length),     color: "#10b981", count: paid.length,     isCount: true },
           { label: "Total recibos", value: String(payments.length), color: "#d4a373", count: payments.length, isCount: true },
         ].map((kpi) => (
           <div key={kpi.label} className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4">
@@ -210,7 +211,6 @@ export function PaymentsClient({ initialPayments, orgId }: { initialPayments: Pa
         ))}
       </div>
 
-      {/* Table */}
       <div className="rounded-2xl border border-[var(--border)] overflow-hidden bg-[var(--background)]">
         <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
           <h2 className="font-semibold text-sm">Recibos de pago</h2>
@@ -219,7 +219,7 @@ export function PaymentsClient({ initialPayments, orgId }: { initialPayments: Pa
             disabled={seedPending}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs font-medium hover:bg-[var(--sidebar-bg)] transition-colors disabled:opacity-50"
           >
-            {seedPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+            {seedPending ? <HabittaSpinner size={14} /> : <RefreshCw className="w-3 h-3" />}
             Regenerar demo
           </button>
         </div>
@@ -267,7 +267,7 @@ export function PaymentsClient({ initialPayments, orgId }: { initialPayments: Pa
                               "border-[var(--border)] hover:bg-[var(--sidebar-bg)]"
                             }`}
                           >
-                            {rs === "sending" ? <Loader2 className="w-3 h-3 animate-spin" /> :
+                            {rs === "sending" ? <HabittaSpinner size={14} /> :
                              rs === "sent"    ? <CheckCircle className="w-3 h-3" /> :
                              rs === "error"   ? <AlertTriangle className="w-3 h-3" /> :
                                                <Send className="w-3 h-3" />}
@@ -287,7 +287,6 @@ export function PaymentsClient({ initialPayments, orgId }: { initialPayments: Pa
         </div>
       </div>
 
-      {/* Payment modal */}
       {selectedPayment && (
         <PaymentModal
           payment={selectedPayment}

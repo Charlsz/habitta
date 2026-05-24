@@ -5,10 +5,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
+import Image from "next/image";
+import { HabittaSpinner } from "@/modules/core/components/HabittaSpinner";
 import { registerAction } from "@/modules/auth/application/auth.actions";
 
-// Esquema de registro
 const registerSchema = z
   .object({
     fullName: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
@@ -45,11 +45,19 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--background)] p-4 font-sans">
       <div className="habitta-card w-full max-w-md p-8">
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-block transition-transform hover:scale-105 active:scale-95">
-            <h1 className="habitta-title text-3xl">Habitta</h1>
+        <div className="text-center mb-8 flex flex-col items-center gap-2">
+          <Link href="/" className="inline-flex flex-col items-center gap-2 group">
+            <Image
+              src="/habitta_icon.png"
+              alt="Habitta"
+              width={56}
+              height={56}
+              className="rounded-2xl shadow-sm transition-transform group-hover:scale-105 active:scale-95"
+              priority
+            />
+            <h1 className="habitta-title text-2xl">Habitta</h1>
           </Link>
-          <p className="habitta-muted mt-2 font-medium">Crea tu cuenta gratis</p>
+          <p className="habitta-muted mt-1 font-medium">Crea tu cuenta gratis</p>
         </div>
 
         {error && (
@@ -112,11 +120,11 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="habitta-primary w-full py-3.5 px-4 flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed mt-2"
+            className="habitta-primary w-full py-3.5 px-4 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed mt-2"
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                <HabittaSpinner size={20} />
                 Creando cuenta...
               </>
             ) : (

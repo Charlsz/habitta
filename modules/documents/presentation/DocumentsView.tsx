@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { FileText, Send, Download, Loader2, CheckCircle, Trash2, X } from 'lucide-react';
+import { FileText, Send, Download, CheckCircle, Trash2, X } from 'lucide-react';
+import { HabittaSpinner } from '@/modules/core/components/HabittaSpinner';
 import type { GeneratedDocument, ConfirmedData } from '../domain/document.types';
 
 type ChatMsg =
@@ -71,7 +72,6 @@ export function DocumentsView({ orgId, orgName, userId, initialDocs, supabaseUrl
       });
       const data = await res.json();
 
-      // Off-topic guard — the AI refused to generate a document
       if (data.off_topic) {
         setMessages(prev => [...prev, { role: 'assistant', content: data.message ?? 'Solo puedo ayudarte a generar documentos oficiales de esta organización. ¿Qué documento necesitas?' }]);
         return;
@@ -173,7 +173,7 @@ export function DocumentsView({ orgId, orgName, userId, initialDocs, supabaseUrl
   return (
     <div className="flex h-full gap-0 overflow-hidden">
 
-      {/* ── LEFT: Chat ──────────────────────────────────────────── */}
+      {/* LEFT: Chat */}
       <div className="flex flex-col flex-1 min-w-0 border-r border-[var(--border)]">
 
         <div className="h-14 flex items-center px-5 gap-3 shrink-0 border-b border-[var(--border)]">
@@ -211,8 +211,8 @@ export function DocumentsView({ orgId, orgName, userId, initialDocs, supabaseUrl
             if (msg.role === 'generating') {
               return (
                 <div key={i} className="flex justify-start">
-                  <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-[var(--surface)] border border-[var(--border)] flex items-center gap-2 text-sm text-[var(--foreground)]/60">
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                  <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-[var(--surface)] border border-[var(--border)] flex items-center gap-2.5 text-sm text-[var(--foreground)]/60">
+                    <HabittaSpinner size={18} />
                     Generando documento...
                   </div>
                 </div>
@@ -276,13 +276,13 @@ export function DocumentsView({ orgId, orgName, userId, initialDocs, supabaseUrl
               disabled={loading || !input.trim()}
               className="shrink-0 w-10 h-10 rounded-xl bg-[#d4a373] text-white flex items-center justify-center hover:bg-[#c8935f] transition-colors disabled:opacity-40"
             >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              {loading ? <HabittaSpinner size={18} /> : <Send className="w-4 h-4" />}
             </button>
           </div>
         </div>
       </div>
 
-      {/* ── RIGHT: Document Library ──────────────────────────────── */}
+      {/* RIGHT: Document Library */}
       <div className="w-80 shrink-0 flex flex-col bg-[var(--sidebar-bg)]">
         <div className="h-14 flex items-center px-5 border-b border-[var(--border)] shrink-0">
           <p className="text-sm font-semibold text-[var(--foreground)]">Biblioteca</p>
@@ -309,7 +309,7 @@ export function DocumentsView({ orgId, orgName, userId, initialDocs, supabaseUrl
         </div>
       </div>
 
-      {/* ── Send to chat modal ───────────────────────────────────── */}
+      {/* Send to chat modal */}
       {showSendModal && activeDocForSend && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4">
@@ -336,7 +336,7 @@ export function DocumentsView({ orgId, orgName, userId, initialDocs, supabaseUrl
                     <p className="font-medium">{s.display_name ?? s.telegram_username ?? 'Cliente'}</p>
                     {s.telegram_username && <p className="text-xs text-[var(--foreground)]/40">@{s.telegram_username}</p>}
                   </div>
-                  {sendingDocId === activeDocForSend.id && <Loader2 className="w-3.5 h-3.5 animate-spin ml-auto" />}
+                  {sendingDocId === activeDocForSend.id && <HabittaSpinner size={14} className="ml-auto" />}
                 </button>
               ))}
             </div>
@@ -346,8 +346,6 @@ export function DocumentsView({ orgId, orgName, userId, initialDocs, supabaseUrl
     </div>
   );
 }
-
-// ── Sub-components ───────────────────────────────────────────────
 
 function ConfirmationCard({ data, prompt, onConfirm, onReject }: {
   data: ConfirmedData;

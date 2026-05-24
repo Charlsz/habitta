@@ -1,227 +1,107 @@
 @import "tailwindcss";
 
+/* ─────────────────────────────────────────────────────────────────
+   Habitta spinner — uses habitta_monochrome.png
+   Slow rotation + subtle pulse for a polished loading feel
+───────────────────────────────────────────────────────────────── */
+@keyframes habitta-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes habitta-pulse {
+  0%, 100% { opacity: 1;    transform: rotate(var(--rot, 0deg)) scale(1); }
+  50%       { opacity: 0.6; transform: rotate(var(--rot, 180deg)) scale(0.88); }
+}
+
+.habitta-spinner {
+  animation:
+    habitta-spin  1.4s linear infinite,
+    habitta-pulse 2.8s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   CSS variables
+───────────────────────────────────────────────────────────────── */
 :root {
-  /* Paleta base */
-  --color-sage:     #ccd5ae;
-  --color-lima:     #e9edc9;
-  --color-cream:    #fefae0;
-  --color-wheat:    #faedcd;
-  --color-caramel:  #d4a373;
-
-  /* Tokens semánticos */
-  --background:     #fefae0;
-  --surface:        #faedcd;
-  --surface-high:   #ffffff;
-  --sidebar-bg:     #e9edc9;
-  --sidebar-active: #ffffff;
-
-  --foreground:     #2C2416;
-  --muted:          #7A6A52;
-  --subtle:         #A8957D;
-
-  --border:         #E8DECE;
-  --border-focus:   #d4a373;
-
-  --accent:         #d4a373;
-  --accent-hover:   #C4915F;
-  --accent-fg:      #ffffff;
-
-  /* Estados */
-  --status-open-bg:        #ccd5ae;
-  --status-open-fg:        #3D5A1A;
-  --status-progress-bg:    #e9edc9;
-  --status-progress-fg:    #2C4A6E;
-  --status-warning-bg:     #faedcd;
-  --status-warning-fg:     #8B5E1A;
-  --status-error-bg:       #FDECEA;
-  --status-error-fg:       #922B21;
-  --status-closed-bg:      #E8DECE;
-  --status-closed-fg:      #7A6A52;
-
-  /* Sombras */
-  --shadow-card:  0 1px 3px rgba(44,36,22,0.06), 0 1px 2px rgba(44,36,22,0.04);
-  --shadow-hover: 0 4px 16px rgba(44,36,22,0.10);
-  --shadow-modal: 0 8px 32px rgba(44,36,22,0.14);
+  --background:  #faf8f5;
+  --foreground:  #2d2a26;
+  --surface:     #f5f0e8;
+  --border:      #e8ddd0;
+  --sidebar-bg:  #f0ebe1;
+  --muted:       #9c8b7a;
+  --accent:      #d4a373;
+  --accent-dark: #b8855a;
+  --radius:      0.75rem;
 }
 
-@theme inline {
-  /* Todos los tokens mapeados como clases Tailwind (ej: bg-background, text-muted, border-border) */
-  --color-background:   var(--background);
-  --color-surface:      var(--surface);
-  --color-surface-high: var(--surface-high);
-  --color-sidebar:      var(--sidebar-bg);
-  --color-foreground:   var(--foreground);
-  --color-muted:        var(--muted);
-  --color-subtle:       var(--subtle);
-  --color-border:       var(--border);
-  --color-border-focus: var(--border-focus);
-  --color-accent:       var(--accent);
-  --color-accent-hover: var(--accent-hover);
-  --color-accent-fg:    var(--accent-fg);
-
-  /* Paleta base también disponible como clases */
-  --color-sage:    #ccd5ae;
-  --color-lima:    #e9edc9;
-  --color-cream:   #fefae0;
-  --color-wheat:   #faedcd;
-  --color-caramel: #d4a373;
-
-  /* Fuentes */
-  --font-sans:  var(--font-dm-sans);
-  --font-serif: var(--font-playfair);
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background:  #1a1814;
+    --foreground:  #f0ebe1;
+    --surface:     #252219;
+    --border:      #3a3530;
+    --sidebar-bg:  #201e1a;
+    --muted:       #8a7a6a;
+    --accent:      #d4a373;
+    --accent-dark: #c8935f;
+  }
 }
 
-* {
-  border-color: var(--border);
-  box-sizing: border-box;
-}
-
+/* ─────────────────────────────────────────────────────────────────
+   Base
+───────────────────────────────────────────────────────────────── */
 body {
-  background-color: var(--background);
+  background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-dm-sans), system-ui, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-h1,
-h2 {
-  color: var(--foreground);
-  font-family: var(--font-playfair), serif;
-  letter-spacing: 0;
-}
-
-::selection {
-  background-color: var(--color-caramel);
-  color: #ffffff;
-}
-
-::-webkit-scrollbar        { width: 6px; height: 6px; }
-::-webkit-scrollbar-track  { background: var(--background); }
-::-webkit-scrollbar-thumb  { background: var(--border); border-radius: 999px; }
-::-webkit-scrollbar-thumb:hover { background: var(--muted); }
-
+/* ─────────────────────────────────────────────────────────────────
+   Utility classes
+───────────────────────────────────────────────────────────────── */
 .habitta-card {
-  background: var(--surface);
+  background: var(--background);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: var(--shadow-card);
-}
-
-.habitta-card-high {
-  background: var(--surface-high);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: var(--shadow-card);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 3px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.03);
 }
 
 .habitta-title {
-  color: var(--foreground);
-  font-family: var(--font-playfair), serif;
+  font-family: var(--font-playfair, serif);
   font-weight: 700;
-  letter-spacing: 0;
+  color: var(--foreground);
+  letter-spacing: -0.01em;
 }
 
-.habitta-muted {
-  color: var(--muted);
-}
-
-.habitta-link {
-  color: var(--accent);
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.habitta-link:hover {
-  color: var(--accent-hover);
-}
+.habitta-muted  { color: var(--muted); }
+.habitta-link   { color: var(--accent); font-weight: 600; text-decoration: none; }
+.habitta-link:hover { text-decoration: underline; }
 
 .habitta-input {
-  background: var(--surface-high);
+  background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: calc(var(--radius) - 2px);
   color: var(--foreground);
-  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
-}
-
-.habitta-input:focus {
-  border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px #d4a37333;
+  font-size: 0.875rem;
   outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.habitta-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 .habitta-primary {
   background: var(--accent);
-  border-radius: 8px;
-  color: var(--accent-fg);
+  color: #fff;
+  border-radius: calc(var(--radius) - 2px);
   font-weight: 600;
-  transition: background-color 150ms ease, transform 150ms ease;
+  font-size: 0.875rem;
+  transition: background 0.15s;
+  border: none;
+  cursor: pointer;
 }
-
-.habitta-primary:hover {
-  background: var(--accent-hover);
-}
-
-.habitta-secondary {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--foreground);
-  font-weight: 600;
-  transition: background-color 150ms ease;
-}
-
-.habitta-secondary:hover {
-  background: var(--color-lima);
-}
-
-/* Legacy Tailwind color classes mapped to the Habitta visual language. */
-.bg-white { background-color: var(--surface-high) !important; }
-.bg-gray-50,
-.bg-zinc-50 { background-color: var(--surface) !important; }
-.bg-gray-100,
-.bg-gray-200,
-.bg-zinc-100 { background-color: var(--color-lima) !important; }
-.bg-blue-50,
-.bg-blue-100,
-.bg-indigo-600,
-.bg-blue-600,
-.bg-blue-700 { background-color: var(--accent) !important; }
-.bg-gray-900 { background-color: var(--foreground) !important; }
-.bg-gray-800 { background-color: #3a3020 !important; }
-.hover\:bg-blue-700:hover,
-.hover\:bg-indigo-700:hover { background-color: var(--accent-hover) !important; }
-.hover\:bg-gray-50:hover,
-.hover\:bg-zinc-50:hover,
-.hover\:bg-gray-100:hover,
-.hover\:bg-gray-200:hover,
-.hover\:bg-gray-300:hover { background-color: var(--color-lima) !important; }
-
-.text-gray-900,
-.text-zinc-900,
-.text-gray-800,
-.text-zinc-700,
-.text-blue-800,
-.text-gray-700 { color: var(--foreground) !important; }
-.text-gray-600,
-.text-gray-500,
-.text-zinc-500,
-.text-gray-400 { color: var(--muted) !important; }
-.text-blue-600,
-.text-blue-700,
-.text-indigo-600,
-.text-indigo-700,
-.text-blue-500 { color: var(--accent) !important; }
-.hover\:text-indigo-700:hover,
-.hover\:text-blue-700:hover { color: var(--accent-hover) !important; }
-
-.border-gray-300,
-.border-zinc-200,
-.border-zinc-100 { border-color: var(--border) !important; }
-.hover\:border-blue-500:hover { border-color: var(--accent) !important; }
-.focus\:border-indigo-500:focus,
-.focus\:ring-blue-500:focus,
-.focus\:ring-indigo-500\/20:focus {
-  border-color: var(--border-focus) !important;
-  box-shadow: 0 0 0 3px #d4a37333 !important;
-}
+.habitta-primary:hover:not(:disabled) { background: var(--accent-dark); }

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useSearchParams } from 'next/navigation';
 
 interface Org {
@@ -24,7 +25,6 @@ const NAV_ITEMS = (orgId: string, orgType: string) => [
   { href: `/scheduling?org=${orgId}`,              label: 'Agenda',      dot: '#9B8BB4' },
   { href: `/notifications/broadcast?org=${orgId}`, label: 'Broadcast',   dot: '#34d399' },
   { href: `/documents?org=${orgId}`,               label: 'Documentos',  dot: '#60a5fa' },
-  // Payments: only for residential / real_estate orgs
   ...(RESIDENTIAL_TYPES.includes(orgType?.toLowerCase?.() ?? '')
     ? [{ href: `/payments?org=${orgId}`, label: 'Pagos', dot: '#a78bfa' }]
     : []),
@@ -96,6 +96,20 @@ export function SidebarNav({ orgs, logoutAction }: Props) {
       </nav>
 
       <div className="px-3 py-4 shrink-0 border-t border-[var(--border)]">
+        {/* Logo al fondo del sidebar */}
+        <div className="flex items-center gap-2 px-4 py-2 mb-2 opacity-40">
+          <Image
+            src="/habitta_icon.png"
+            alt="Habitta"
+            width={20}
+            height={20}
+            className="rounded-md"
+          />
+          <span className="text-xs font-semibold tracking-wide" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
+            Habitta
+          </span>
+        </div>
+
         <form action={logoutAction}>
           <button
             type="submit"
