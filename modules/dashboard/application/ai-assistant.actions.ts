@@ -85,7 +85,6 @@ export async function getOrganizationAIContext(orgId?: string) {
     })),
   };
 
-  // NOTE: no unit_number column — unit info lives in metadata jsonb
   const { data: clients } = await supabase
     .from("residents")
     .select("id, full_name, email, phone, status, relation_type, move_in_date, move_out_date, document_type, document_number, notes, metadata")
@@ -185,38 +184,52 @@ Hoy es ${new Date().toLocaleDateString("es-CO", { weekday: "long", year: "numeri
 
 ═══ ESQUEMA REAL DE TABLAS ═══
 
-residents: id, organization_id, full_name, email, phone, document_type, document_number, relation_type, move_in_date, move_out_date, status, notes, metadata (jsonb), asset_id, telegram_session_id, created_at, updated_at
-tickets:   id, organization_id, title, type, priority, status, description, created_at, updated_at
-assets:    id, organization_id, name, code, type, status, metadata (jsonb), created_at, updated_at
+residents: id, organization_id, full_name, email, phone, document_type, document_number,
+           relation_type, move_in_date, move_out_date, status, notes, metadata (jsonb)
+tickets:   id, organization_id, title, type, priority, status, description
+assets:    id, organization_id, name, code, type, status, metadata (jsonb)
 events:    id, organization_id, title, description, status, start_time, end_time
 
-IMPORTANTE: La tabla residents NO tiene columna unit_number.
-Para guardar información de unidad/apartamento usa el campo metadata con la clave "unit".
-Ejemplo: "metadata": {"unit": "Apto 804", "floor": "8", "tower": "Pajaro"}
+NOTA: residents NO tiene columna unit_number. Usa metadata: {"unit": "Apto 804"}.
+
+═══ VALORES VÁLIDOS (check constraints reales de la BD) ═══
+
+residents.document_type : cc | ce | passport | nit | other
+residents.relation_type : owner | tenant | resident | buyer | other
+residents.status        : active | inactive | pending
+tickets.status          : open | in_progress | on_hold | resolved | closed | rejected
+tickets.priority        : low | medium | high | urgent
+events.status           : pending | approved | completed | rejected
+
+Traducción cuando el admin use términos en español:
+- cédula de ciudadanía / CC  → document_type: "cc"
+- cédula de extranjería / CE → document_type: "ce"
+- pasaporte                   → document_type: "passport"
+- propietario                 → relation_type: "owner"
+- arrendatario / inquilino    → relation_type: "tenant"
+- residente                   → relation_type: "resident"
+- comprador                   → relation_type: "buyer"
 
 ═══ CAMPOS PERMITIDOS POR OPERACIÓN ═══
 
-UPDATE residents: status (active|inactive), full_name, email, phone, document_type, document_number, relation_type, move_in_date, move_out_date, notes, metadata
-UPDATE tickets:   status (open|in_progress|on_hold|resolved|closed|rejected), priority (low|medium|high|urgent), title, description
-UPDATE events:    status (pending|approved|completed|rejected)
-UPDATE assets:    status, name
+UPDATE residents : status, full_name, email, phone, document_type, document_number, relation_type, move_in_date, move_out_date, notes, metadata
+UPDATE tickets   : status, priority, title, description
+UPDATE events    : status
+UPDATE assets    : status, name
 
-INSERT residents (organization_id se inyecta automáticamente, NO lo incluyas):
-  full_name (requerido), email, phone,
-  document_type (cedula_ciudadania|cedula_extranjeria|pasaporte|nit),
-  document_number, relation_type (propietario|arrendatario|residente|empleado|visitante),
-  move_in_date (YYYY-MM-DD), move_out_date,
-  status (active|inactive, default: active), notes,
-  metadata (jsonb — usa {"unit":"Apto 804"} para guardar unidad)
+INSERT residents (NO incluyas organization_id, se inyecta solo):
+  full_name*, email, phone, document_type, document_number,
+  relation_type, move_in_date (YYYY-MM-DD), move_out_date,
+  status (default: active), notes, metadata
 
-INSERT tickets: title (requerido), type, priority, status (siempre "open"), description
-INSERT assets:  name (requerido), code, type, status
+INSERT tickets : title*, type, priority, status (siempre "open"), description
+INSERT assets  : name*, code, type, status
 
 ═══ DATOS ACTUALES DE LA ORG ═══
 
 📋 TICKETS (${context?.counts.total} total)
 Estado: abiertos ${context?.counts.open} | en progreso ${context?.counts.in_progress} | en espera ${context?.counts.on_hold} | resueltos ${context?.counts.resolved} | cerrados ${context?.counts.closed} | rechazados ${context?.counts.rejected}
-Prioridad activa: urgentes ${context?.counts.urgent} | alta ${context?.counts.high} | este mes: ${context?.counts.thisMonth}
+Prioridad: urgentes ${context?.counts.urgent} | alta ${context?.counts.high} | este mes: ${context?.counts.thisMonth}
 ${ticketLines || "Sin tickets."}
 
 👥 CLIENTES/RESIDENTES (${context?.clientCounts.total} total — activos: ${context?.clientCounts.active})
@@ -235,25 +248,24 @@ ${broadcastLines || "Sin broadcasts enviados."}
 
 Siempre responde JSON puro (sin bloques de código, sin texto extra).
 
-Respuesta informativa:
-{"type":"answer","content":"texto"}
+Respuesta informativa: {"type":"answer","content":"texto"}
 
-Acción (SIEMPRE pide confirmación, nunca ejecutes sin que el admin confirme):
+Acción (pide confirmación, no ejecutes sin que el admin confirme):
 {
   "type": "action",
   "description": "breve descripción",
-  "confirmation_message": "Explica exactamente qué datos se crearán o modificarán",
+  "confirmation_message": "Detalla exactamente qué se creará o modificará",
   "operations": [
     {
       "table": "residents",
       "type": "insert",
       "payload": {
-        "full_name": "Carlos Galvis",
+        "full_name": "Carlos Andres Galvis Pajaro",
         "email": "cgalvis21_@hotmail.com",
         "phone": "3166610293",
-        "document_type": "cedula_ciudadania",
+        "document_type": "cc",
         "document_number": "1043638251",
-        "relation_type": "residente",
+        "relation_type": "resident",
         "move_in_date": "2025-05-24",
         "status": "active",
         "notes": "Tiene una mascota: perro",
@@ -266,9 +278,8 @@ Acción (SIEMPRE pide confirmación, nunca ejecutes sin que el admin confirme):
 
 REGLAS ABSOLUTAS:
 - NO incluyas organization_id en payload.
-- NO uses el campo unit_number (no existe). Usa metadata.unit.
-- Para undo de insert: usa type delete con el match del id.
-- Para undo de update: usa los valores anteriores del contexto.
+- NO uses unit_number (no existe) — usa metadata.unit.
+- Usa SOLO los valores exactos del check constraint (cc, ce, passport, owner, tenant, resident, buyer, other).
 - Nunca inventes IDs. Solo usa IDs del contexto.`;
 
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -346,15 +357,11 @@ export async function executeAIAction(
 
       const safePayload: Record<string, unknown> = { organization_id: orgId };
       for (const key of Object.keys(op.payload)) {
-        if (ALLOWED_INSERT[op.table].includes(key)) {
+        if (ALLOWED_INSERT[op.table].includes(key))
           safePayload[key] = op.payload[key];
-        }
       }
 
-      const { error } = await supabase
-        .from(op.table as any)
-        .insert(safePayload);
-
+      const { error } = await supabase.from(op.table as any).insert(safePayload);
       if (error) return { ok: false, error: error.message };
       continue;
     }
@@ -375,9 +382,8 @@ export async function executeAIAction(
       }
 
       let query = supabase.from(op.table as any).update(safePayload);
-      for (const [col, val] of Object.entries(op.match)) {
+      for (const [col, val] of Object.entries(op.match))
         query = (query as any).eq(col, val);
-      }
       query = (query as any).eq("organization_id", orgId);
       const { error } = await (query as any);
       if (error) return { ok: false, error: error.message };
@@ -392,9 +398,8 @@ export async function executeAIAction(
         return { ok: false, error: `DELETE en '${op.table}' requiere un match` };
 
       let query = supabase.from(op.table as any).delete();
-      for (const [col, val] of Object.entries(op.match)) {
+      for (const [col, val] of Object.entries(op.match))
         query = (query as any).eq(col, val);
-      }
       query = (query as any).eq("organization_id", orgId);
       const { error } = await (query as any);
       if (error) return { ok: false, error: error.message };
