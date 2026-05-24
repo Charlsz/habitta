@@ -2,6 +2,30 @@
 
 import { createClient } from "@/lib/supabase/server";
 
+// ─── Types ───────────────────────────────────────────────────────────────────
+export type AIOperation = {
+  table: string;
+  type: "update" | "insert" | "delete";
+  match?: Record<string, unknown>;   // WHERE clause
+  payload?: Record<string, unknown>; // SET values
+};
+
+export type AIActionResponse = {
+  type: "action";
+  description: string;             // Human-readable description
+  confirmation_message: string;    // What the AI will do (shown before confirming)
+  operations: AIOperation[];       // Forward operations
+  undo_operations: AIOperation[];  // Reverse operations (snapshot-based)
+};
+
+export type AIAnswerResponse = {
+  type: "answer";
+  content: string;
+};
+
+export type AIResponse = AIActionResponse | AIAnswerResponse;
+
+// ─── getOrganizationAIContext ────────────────────────────────────────────────
 export async function getOrganizationAIContext(orgId?: string) {
   const supabase = await createClient();
 
@@ -32,7 +56,6 @@ export async function getOrganizationAIContext(orgId?: string) {
   if (!membership) return null;
   const org = membership.organizations as any;
 
-  // ── Tickets ─────────────────────────────────────────────────────────────
   const { data: allTickets } = await supabase
     .from("tickets")
     .select("id, title, type, priority, status, description, created_at, updated_at")
@@ -62,7 +85,6 @@ export async function getOrganizationAIContext(orgId?: string) {
     })),
   };
 
-  // ── Clientes ─────────────────────────────────────────────────────────────
   const { data: clients } = await supabase
     .from("residents")
     .select("id, full_name, email, phone, status, relation_type, move_in_date, move_out_date, document_type, document_number, notes")
@@ -75,14 +97,12 @@ export async function getOrganizationAIContext(orgId?: string) {
     inactive: clients?.filter((c) => c.status === "inactive").length ?? 0,
   };
 
-  // ── Assets / Unidades ────────────────────────────────────────────────────
   const { data: assets } = await supabase
     .from("assets")
     .select("id, name, code, type, status, metadata")
     .eq("organization_id", resolvedOrgId)
     .order("name", { ascending: true });
 
-  // ── Agenda / Eventos ─────────────────────────────────────────────────────
   const { data: events } = await supabase
     .from("events")
     .select("id, title, description, status, start_time, end_time")
@@ -98,7 +118,6 @@ export async function getOrganizationAIContext(orgId?: string) {
     rejected:  events?.filter((e) => e.status === "rejected").length ?? 0,
   };
 
-  // ── Broadcasts ───────────────────────────────────────────────────────────
   const { data: broadcasts } = await supabase
     .from("broadcast_messages")
     .select("id, message, sent_at, recipient_count, status")
@@ -109,52 +128,47 @@ export async function getOrganizationAIContext(orgId?: string) {
   return {
     org,
     orgId: resolvedOrgId,
-    // tickets
     counts,
     allTickets: allTickets ?? [],
-    // clientes
     clientCounts,
     clients: clients ?? [],
-    // assets
     assets: assets ?? [],
-    // agenda
     eventCounts,
     events: events ?? [],
-    // broadcasts
     broadcasts: broadcasts ?? [],
   };
 }
 
+// ─── askAIAssistant ─────────────────────────────────────────────────────────
 export async function askAIAssistant(
   messages: { role: string; content: string }[],
   context: Awaited<ReturnType<typeof getOrganizationAIContext>>
-) {
+): Promise<AIResponse> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("OPENROUTER_API_KEY no configurado");
 
   const orgName = context?.org?.name ?? "la organización";
 
-  // ── Serializar datos para el prompt ──────────────────────────────────────
   const ticketLines = (context?.allTickets ?? [])
     .slice(0, 60)
     .map((t: any) =>
-      `- [${t.status}] "${t.title}" | tipo: ${t.type} | prioridad: ${t.priority} | ${new Date(t.created_at).toLocaleDateString("es-CO")}`
+      `- [${t.id}] [${t.status}] "${t.title}" | tipo: ${t.type} | prioridad: ${t.priority} | ${new Date(t.created_at).toLocaleDateString("es-CO")}`
     ).join("\n");
 
   const clientLines = (context?.clients ?? [])
     .map((c: any) =>
-      `- ${c.full_name} (${c.relation_type ?? "—"}) | ${c.status} | email: ${c.email ?? "—"} | tel: ${c.phone ?? "—"} | ingreso: ${c.move_in_date ?? "—"}${c.move_out_date ? ` | salida: ${c.move_out_date}` : ""}`
+      `- [${c.id}] ${c.full_name} (${c.relation_type ?? "—"}) | ${c.status} | email: ${c.email ?? "—"} | tel: ${c.phone ?? "—"} | ingreso: ${c.move_in_date ?? "—"}${c.move_out_date ? ` | salida: ${c.move_out_date}` : ""}`
     ).join("\n");
 
   const assetLines = (context?.assets ?? [])
     .map((a: any) =>
-      `- ${a.name}${a.code ? ` (${a.code})` : ""} | tipo: ${a.type ?? "—"} | estado: ${a.status ?? "—"}`
+      `- [${a.id}] ${a.name}${a.code ? ` (${a.code})` : ""} | tipo: ${a.type ?? "—"} | estado: ${a.status ?? "—"}`
     ).join("\n");
 
   const eventLines = (context?.events ?? [])
     .slice(0, 30)
     .map((e: any) =>
-      `- [${e.status}] "${e.title}" | ${new Date(e.start_time).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })}`
+      `- [${e.id}] [${e.status}] "${e.title}" | ${new Date(e.start_time).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })}`
     ).join("\n");
 
   const broadcastLines = (context?.broadcasts ?? [])
@@ -163,8 +177,14 @@ export async function askAIAssistant(
     ).join("\n");
 
   const systemPrompt = `Eres el asistente interno de Habitta para la organización **${orgName}**.
-Tu función es responder cualquier pregunta sobre los datos de esta organización: clientes, unidades, tickets, agenda y broadcasts.
-Hoy es ${now().toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}.
+Respondes preguntas Y puedes ejecutar acciones sobre la base de datos de esta organización.
+Hoy es ${new Date().toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}.
+
+Tablas y campos disponibles para modificar:
+- tickets: status (open|in_progress|on_hold|resolved|closed|rejected), priority (low|medium|high|urgent), title, description
+- residents: status (active|inactive), notes, phone, email
+- events: status (pending|approved|completed|rejected)
+- assets: status, name
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📋 TICKETS (${context?.counts.total} total)
@@ -173,10 +193,7 @@ Estado: abiertos ${context?.counts.open} | en progreso ${context?.counts.in_prog
 Prioridad activa: urgentes ${context?.counts.urgent} | alta ${context?.counts.high}
 Este mes: ${context?.counts.thisMonth}
 
-Por tipo:
-${context?.counts.byType.map((t: any) => `  ${t.type}: ${t.count}`).join("\n")}
-
-Lista (hasta 60 más recientes):
+Lista (con ID):
 ${ticketLines || "Sin tickets."}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -187,15 +204,13 @@ Activos: ${context?.clientCounts.active} | Inactivos: ${context?.clientCounts.in
 ${clientLines || "Sin clientes registrados."}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🏠 UNIDADES / ACTIVOS (${context?.assets.length} total)
+🏠 UNIDADES / ACTIVOS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${assetLines || "Sin unidades registradas."}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📅 AGENDA (${context?.eventCounts.total} eventos)
+📅 AGENDA
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Pendientes: ${context?.eventCounts.pending} | Aprobados: ${context?.eventCounts.approved} | Completados: ${context?.eventCounts.completed} | Rechazados: ${context?.eventCounts.rejected}
-
 ${eventLines || "Sin eventos."}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -204,11 +219,42 @@ ${eventLines || "Sin eventos."}
 ${broadcastLines || "Sin broadcasts enviados."}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-REGLAS:
-- Responde siempre en español, de forma clara y concisa.
-- Puedes hacer cálculos, listados, comparaciones y resúmenes con todos los datos anteriores.
-- Si te preguntan algo completamente ajeno a ${orgName} o a Habitta, responde: "Solo tengo información sobre ${orgName}."
-- Nunca inventes datos que no estén en el contexto.`;
+INSTRUCCIONES DE RESPUESTA:
+
+Siempre responde con JSON válido. Dos formatos posibles:
+
+1. Respuesta informativa (preguntas, análisis):
+{"type":"answer","content":"Tu respuesta aquí en texto plano"}
+
+2. Acción sobre la BD (cuando el admin pide hacer un cambio):
+{
+  "type": "action",
+  "description": "Descripción breve de qué hará",
+  "confirmation_message": "Mensaje al admin explicando exactamente qué se cambiará",
+  "operations": [
+    {
+      "table": "tickets",
+      "type": "update",
+      "match": {"id": "uuid-aqui"},
+      "payload": {"status": "resolved"}
+    }
+  ],
+  "undo_operations": [
+    {
+      "table": "tickets",
+      "type": "update",
+      "match": {"id": "uuid-aqui"},
+      "payload": {"status": "open"}
+    }
+  ]
+}
+
+REGLAS ABSOLUTAS:
+- Responde SIEMPRE con JSON puro, sin bloques de código, sin texto extra.
+- Para undo_operations, usa SIEMPRE los valores actuales del contexto (estado anterior real).
+- Solo modifica tablas y campos permitidos. Nada de DELETE masivo ni borrar datos críticos.
+- Si no tienes suficiente información para identificar el registro exacto, pregunta con type:answer.
+- Nunca inventes IDs. Usa solo los IDs del contexto.`;
 
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
@@ -221,15 +267,86 @@ REGLAS:
     body: JSON.stringify({
       model: "openai/gpt-4o-mini",
       messages: [{ role: "system", content: systemPrompt }, ...messages],
-      temperature: 0.2,
+      temperature: 0.1,
+      max_tokens: 1500,
     }),
   });
 
   if (!res.ok) throw new Error(`OpenRouter error: ${await res.text()}`);
   const data = await res.json();
-  return data.choices?.[0]?.message?.content ?? "No pude generar una respuesta.";
+  const raw = data.choices?.[0]?.message?.content ?? "{}";
+
+  const trimmed = raw.replace(/```json?/gi, "").replace(/```/g, "").trim();
+
+  let parsed: AIResponse;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    const match = trimmed.match(/\{[\s\S]*\}/);
+    try {
+      parsed = match ? JSON.parse(match[0]) : { type: "answer", content: trimmed };
+    } catch {
+      parsed = { type: "answer", content: trimmed };
+    }
+  }
+
+  // Fallback: if AI returned plain text without JSON structure
+  if (!(parsed as any).type) {
+    parsed = { type: "answer", content: raw };
+  }
+
+  return parsed;
 }
 
-function now() {
-  return new Date();
+// ─── executeAIAction ─────────────────────────────────────────────────────────
+export async function executeAIAction(
+  operations: AIOperation[],
+  orgId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "No autenticado" };
+
+  // Verify user belongs to org
+  const { data: membership } = await supabase
+    .from("organization_members")
+    .select("organization_id")
+    .eq("user_id", user.id)
+    .eq("organization_id", orgId)
+    .maybeSingle();
+
+  if (!membership) return { ok: false, error: "Sin permisos para esta organización" };
+
+  // Allowed tables and fields (security guard)
+  const ALLOWED: Record<string, string[]> = {
+    tickets:   ["status", "priority", "title", "description"],
+    residents: ["status", "notes", "phone", "email"],
+    events:    ["status"],
+    assets:    ["status", "name"],
+  };
+
+  for (const op of operations) {
+    if (!ALLOWED[op.table]) {
+      return { ok: false, error: `Tabla '${op.table}' no permitida` };
+    }
+    if (op.payload) {
+      for (const key of Object.keys(op.payload)) {
+        if (!ALLOWED[op.table].includes(key)) {
+          return { ok: false, error: `Campo '${key}' en '${op.table}' no permitido` };
+        }
+      }
+    }
+
+    if (op.type === "update" && op.match && op.payload) {
+      let query = supabase.from(op.table as any).update(op.payload as any);
+      for (const [col, val] of Object.entries(op.match)) {
+        query = (query as any).eq(col, val);
+      }
+      const { error } = await (query as any);
+      if (error) return { ok: false, error: error.message };
+    }
+  }
+
+  return { ok: true };
 }
