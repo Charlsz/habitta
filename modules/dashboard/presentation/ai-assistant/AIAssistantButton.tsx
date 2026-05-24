@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useTransition, useCallback } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Undo2, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import {
   askAIAssistant,
@@ -10,10 +10,11 @@ import {
   type AIActionResponse,
   type AIOperation,
 } from "@/modules/dashboard/application/ai-assistant.actions";
+import { setAIBridgeInstruction } from "@/lib/ai-bridge";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-type AnswerMsg    = { role: "user" | "assistant"; content: string };
-type ActionMsg    = { role: "action_pending"; action: AIActionResponse };
+// ── Types ───────────────────────────────────────────────────────────────────────────────
+type AnswerMsg     = { role: "user" | "assistant"; content: string };
+type ActionMsg     = { role: "action_pending"; action: AIActionResponse };
 type ActionDoneMsg = { role: "action_done"; description: string; undoIndex: number };
 type Message = AnswerMsg | ActionMsg | ActionDoneMsg;
 
@@ -26,7 +27,7 @@ function getOrgIdFromURL(): string | undefined {
   return new URLSearchParams(window.location.search).get("org") ?? undefined;
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// ── Component ─────────────────────────────────────────────────────────────────────────────
 export function AIAssistantButton({ initialContext }: Props) {
   const [open, setOpen]               = useState(false);
   const [messages, setMessages]       = useState<Message[]>([]);
@@ -36,14 +37,15 @@ export function AIAssistantButton({ initialContext }: Props) {
   const [undoStack, setUndoStack]     = useState<UndoEntry[]>([]);
   const [undoing, setUndoing]         = useState(false);
   const [isPending, startTransition]  = useTransition();
-  const bottomRef   = useRef<HTMLDivElement>(null);
-  const inputRef    = useRef<HTMLInputElement>(null);
+  const bottomRef    = useRef<HTMLDivElement>(null);
+  const inputRef     = useRef<HTMLInputElement>(null);
   const trackedOrgId = useRef<string | undefined>(context?.orgId);
 
   const pathname = usePathname();
+  const router   = useRouter();
   const isDocumentsPage = pathname === "/documents";
 
-  // ── Load context ─────────────────────────────────────────────────────────
+  // ── Load context ────────────────────────────────────────────────────────────────────
   const loadContext = useCallback(async (orgId?: string, announce = false) => {
     setLoadingCtx(true);
     try {
@@ -62,7 +64,7 @@ export function AIAssistantButton({ initialContext }: Props) {
     }
   }, []);
 
-  // ── On open ───────────────────────────────────────────────────────────────
+  // ── On open ───────────────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!open) return;
     setTimeout(() => inputRef.current?.focus(), 100);
@@ -72,13 +74,13 @@ export function AIAssistantButton({ initialContext }: Props) {
     } else if (messages.length === 0) {
       setMessages([{
         role: "assistant",
-        content: `¡Hola! Soy tu asistente para **${context?.org?.name ?? "tu organización"}**. Puedo responder preguntas y también ejecutar cambios: cerrar tickets, actualizar estados, cambiar prioridades, etc. ¿En qué te ayudo?`,
+        content: `¡Hola! Soy tu asistente para **${context?.org?.name ?? "tu organización"}**. Puedo responder preguntas, ejecutar cambios (tickets, residentes, etc.) y también pedirle al asistente de documentos que genere PDFs. ¿En qué te ayudo?`,
       }]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // ── Poll for org change ───────────────────────────────────────────────────
+  // ── Poll for org change ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!open) return;
     const interval = setInterval(() => {
@@ -88,12 +90,12 @@ export function AIAssistantButton({ initialContext }: Props) {
     return () => clearInterval(interval);
   }, [open, loadContext]);
 
-  // ── Auto-scroll ───────────────────────────────────────────────────────────
+  // ── Auto-scroll ─────────────────────────────────────────────────────────────────────────
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isPending]);
 
-  // ── Send message ──────────────────────────────────────────────────────────
+  // ── Send message ───────────────────────────────────────────────────────────────────────
   const handleSend = () => {
     const text = input.trim();
     if (!text || isPending) return;
@@ -110,7 +112,25 @@ export function AIAssistantButton({ initialContext }: Props) {
       try {
         const reply = await askAIAssistant(newHistory, context);
 
-        if (reply.type === "action") {
+        if (reply.type === "navigate_documents") {
+          // Bridge: send instruction to documents chat and navigate
+          const orgId = context?.orgId;
+          if (orgId) {
+            setAIBridgeInstruction({
+              instruction: (reply as any).instruction,
+              orgId,
+              target: "documents",
+            });
+            setMessages((prev) => [...prev, {
+              role: "assistant",
+              content: `📄 Listo, te llevo a Documentos para generar: **${(reply as any).instruction}**`,
+            }]);
+            setTimeout(() => {
+              router.push(`/documents?org=${orgId}`);
+              setOpen(false);
+            }, 800);
+          }
+        } else if (reply.type === "action") {
           setMessages((prev) => [...prev, { role: "action_pending", action: reply }]);
         } else {
           setMessages((prev) => [...prev, { role: "assistant", content: reply.content }]);
@@ -121,12 +141,11 @@ export function AIAssistantButton({ initialContext }: Props) {
     });
   };
 
-  // ── Confirm action ────────────────────────────────────────────────────────
+  // ── Confirm action ───────────────────────────────────────────────────────────────────
   const handleConfirmAction = async (action: AIActionResponse) => {
     const orgId = context?.orgId;
     if (!orgId) return;
 
-    // Replace pending card with loading
     setMessages((prev) => prev.map((m) =>
       m.role === "action_pending" ? { role: "assistant" as const, content: "⏳ Ejecutando cambios..." } : m
     ));
@@ -136,10 +155,7 @@ export function AIAssistantButton({ initialContext }: Props) {
     if (result.ok) {
       const undoIndex = undoStack.length;
       setUndoStack((prev) => [...prev, { description: action.description, operations: action.undo_operations }]);
-
-      // Reload context so next query is fresh
       await loadContext(orgId, false);
-
       setMessages((prev) => [
         ...prev.filter((m) => !(m.role === "assistant" && (m as AnswerMsg).content === "⏳ Ejecutando cambios...")),
         { role: "action_done", description: action.description, undoIndex },
@@ -152,7 +168,7 @@ export function AIAssistantButton({ initialContext }: Props) {
     }
   };
 
-  // ── Cancel action ─────────────────────────────────────────────────────────
+  // ── Cancel action ───────────────────────────────────────────────────────────────────
   const handleCancelAction = () => {
     setMessages((prev) => [
       ...prev.filter((m) => m.role !== "action_pending"),
@@ -160,7 +176,7 @@ export function AIAssistantButton({ initialContext }: Props) {
     ]);
   };
 
-  // ── Undo last action ─────────────────────────────────────────────────────
+  // ── Undo ─────────────────────────────────────────────────────────────────────────────────
   const handleUndo = async () => {
     if (undoStack.length === 0 || undoing) return;
     const last = undoStack[undoStack.length - 1];
@@ -217,7 +233,6 @@ export function AIAssistantButton({ initialContext }: Props) {
             {loadingCtx && (
               <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin shrink-0" />
             )}
-            {/* Undo button */}
             {undoStack.length > 0 && (
               <button
                 onClick={handleUndo}
@@ -236,8 +251,6 @@ export function AIAssistantButton({ initialContext }: Props) {
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
             {messages.map((msg, i) => {
-
-              // User / assistant bubble
               if (msg.role === "user" || msg.role === "assistant") {
                 return (
                   <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -255,7 +268,6 @@ export function AIAssistantButton({ initialContext }: Props) {
                 );
               }
 
-              // Action confirmation card
               if (msg.role === "action_pending") {
                 return (
                   <div key={i} className="flex justify-start">
@@ -287,7 +299,6 @@ export function AIAssistantButton({ initialContext }: Props) {
                 );
               }
 
-              // Action done confirmation
               if (msg.role === "action_done") {
                 return (
                   <div key={i} className="flex justify-start">
@@ -324,7 +335,7 @@ export function AIAssistantButton({ initialContext }: Props) {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder="Pregunta o pide un cambio: cierra el ticket X..."
+              placeholder="Pregunta, pide un cambio o genera un documento..."
               disabled={isPending || loadingCtx}
               className="flex-1 text-sm px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:ring-1 focus:ring-[#d4a373] disabled:opacity-50"
             />
