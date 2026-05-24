@@ -228,13 +228,14 @@ export default function LandingClient({ isLoggedIn, displayName, initials }: Pro
             </div>
 
             <h1 style={{ fontFamily: "var(--font-playfair), serif", fontSize: "clamp(2.4rem, 6vw, 3.75rem)", fontWeight: 700, lineHeight: 1.15, color: "#2C2416", marginBottom: "1.5rem" }}>
-              Deja de administrar
-              {" "}tu propiedad{" "}
-              <span style={{ color: "#d4a373" }}>por WhatsApp</span>
+              Todo lo de tu propiedad
+              {" "}ordenado en{" "}
+              <span style={{ color: "#d4a373" }}>un solo lugar</span>
             </h1>
 
             <p style={{ fontSize: "1.125rem", lineHeight: 1.7, color: "#7A6A52", maxWidth: "40rem", margin: "0 auto 2.5rem" }}>
-              Habitta es la plataforma que te ayuda a recibir solicitudes, resolver problemas, enviar recordatorios de pago y generar documentos — todo desde un solo lugar, sin enredos.
+              Habitta es la plataforma que te ayuda a recibir solicitudes, resolver problemas, enviar recordatorios de pago y generar documentos.
+              <p>¡Todo desde un solo lugar, sin enredos!</p>
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -254,7 +255,7 @@ export default function LandingClient({ isLoggedIn, displayName, initials }: Pro
               )}
             </div>
 
-            <p style={{ marginTop: "1rem", fontSize: "0.8125rem", color: "#A8957D" }}>Sin tarjeta de crédito · Gratis para empezar · Listo en 2 minutos</p>
+            {/* <p style={{ marginTop: "1rem", fontSize: "0.8125rem", color: "#A8957D" }}>Sin tarjeta de crédito · Gratis para empezar · Listo en 2 minutos</p> */}
           </div>
 
           {/* Mockup */}
@@ -469,7 +470,7 @@ export default function LandingClient({ isLoggedIn, displayName, initials }: Pro
               onMouseLeave={e => (e.currentTarget.style.backgroundColor = "#d4a373")}>
               {primaryLabel} →
             </Link>
-            <p style={{ marginTop: "1rem", fontSize: "0.8125rem", color: "#A8957D" }}>Sin tarjeta de crédito · Listo en 2 minutos</p>
+            {/* <p style={{ marginTop: "1rem", fontSize: "0.8125rem", color: "#A8957D" }}>Sin tarjeta de crédito · Listo en 2 minutos</p> */}
           </div>
         </section>
       </main>
