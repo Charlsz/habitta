@@ -9,6 +9,7 @@ import { TelegramNotifiedBadge } from "@/modules/tickets/presentation/telegram-n
 import { SLABadge } from "@/modules/tickets/components/SLABadge";
 import {
   changeTicketStatusAction,
+  changeTicketPriorityAction,
   addTicketCommentAction,
   respondToTicketAction,
   assignTicketAction,
@@ -31,6 +32,13 @@ const ALL_STATUSES: TicketStatus[] = [
   "open", "in_review", "in_progress", "on_hold", "resolved", "rejected", "closed",
 ];
 
+const PRIORITIES = [
+  { value: "urgent", label: "🔴 Urgente",  sla: "2 horas",  color: "text-red-600" },
+  { value: "high",   label: "🟠 Alta",     sla: "24 horas", color: "text-orange-500" },
+  { value: "medium", label: "🟡 Media",    sla: "3 días",   color: "text-yellow-600" },
+  { value: "low",    label: "🟢 Baja",     sla: "7 días",   color: "text-green-600" },
+];
+
 function formatDate(iso: string | null | undefined) {
   if (!iso) return null;
   return new Date(iso).toLocaleDateString("es-CO", {
@@ -47,41 +55,117 @@ async function getTelegramSession(sessionId: string) {
   return data;
 }
 
-/** Barra de progreso SLA — solo renderiza en server, SLABadge se hidrata en cliente */
-function SLAProgressSection({ priority, createdAt, status }: { priority: string; createdAt: string; status: string }) {
-  if (status === "closed" || status === "resolved") return null;
-  const slaTotalMs  = (SLA_HOURS[priority] ?? 72) * 3_600_000;
-  const elapsed     = Date.now() - new Date(createdAt).getTime();
-  const pct         = Math.min(Math.round((elapsed / slaTotalMs) * 100), 100);
-  const slaStatus   = pct < 75 ? "on_track" : pct < 100 ? "at_risk" : "overdue";
-  const barColor    = slaStatus === "on_track" ? "bg-green-500" : slaStatus === "at_risk" ? "bg-yellow-400" : "bg-red-500";
-  const slaHours    = SLA_HOURS[priority] ?? 72;
+// ── SLA Section mejorada ──────────────────────────────────────────────────────
+function SLAProgressSection({
+  priority, createdAt, status, isAdmin, ticketId,
+}: {
+  priority: string; createdAt: string; status: string;
+  isAdmin: boolean; ticketId: string;
+}) {
+  const isClosed = status === "closed" || status === "resolved";
+  const slaHours  = SLA_HOURS[priority] ?? 72;
+  const slaTotalMs = slaHours * 3_600_000;
+  const elapsed    = Date.now() - new Date(createdAt).getTime();
+  const pct        = Math.min(Math.round((elapsed / slaTotalMs) * 100), 100);
+  const slaState   = pct < 75 ? "on_track" : pct < 100 ? "at_risk" : "overdue";
+
+  const barColor = slaState === "on_track" ? "bg-green-500" : slaState === "at_risk" ? "bg-yellow-400" : "bg-red-500";
+  const dueAt    = new Date(new Date(createdAt).getTime() + slaTotalMs);
+  const now      = new Date();
+  const diffMs   = dueAt.getTime() - now.getTime();
+
+  // Etiqueta humana de tiempo restante / vencido
+  function humanTime(ms: number) {
+    const abs = Math.abs(ms);
+    const mins = Math.round(abs / 60_000);
+    if (mins < 60)   return `${mins} min`;
+    const h = Math.floor(mins / 60);
+    if (h < 48)      return `${h} hora${h !== 1 ? "s" : ""}`;
+    const d = Math.floor(h / 24);
+    return `${d} día${d !== 1 ? "s" : ""}`;
+  }
+
+  const timeLabel = isClosed
+    ? "Ticket cerrado"
+    : diffMs > 0
+    ? `Quedan ${humanTime(diffMs)} para resolver`
+    : `Venció hace ${humanTime(diffMs)}`;
+
+  const stateLabel =
+    isClosed    ? { text: "Cerrado",  bg: "bg-gray-100",   color: "text-gray-500" } :
+    slaState === "on_track" ? { text: "A tiempo",  bg: "bg-green-50",  color: "text-green-700" } :
+    slaState === "at_risk"  ? { text: "En riesgo", bg: "bg-yellow-50", color: "text-yellow-700" } :
+                              { text: "Vencido",   bg: "bg-red-50",    color: "text-red-600" };
+
+  // Explicación humana por prioridad
+  const prioMeta = PRIORITIES.find(p => p.value === priority);
 
   return (
-    <div className="habitta-card p-5 space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-sm text-[var(--foreground)] uppercase tracking-wide">
-          ⏱ SLA ({slaHours}h para prioridad {priority})
-        </h3>
-        <SLABadge priority={priority} createdAt={createdAt} status={status} />
+    <div className="habitta-card p-5 space-y-4">
+      {/* Cabecera */}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="font-semibold text-sm text-[var(--foreground)]">⏱ Tiempo de resolución</h3>
+          <p className="text-xs text-[var(--muted)] mt-0.5">
+            Este ticket tiene prioridad{" "}
+            <span className={`font-semibold ${prioMeta?.color ?? ""}`}>{prioMeta?.label ?? priority}</span>
+            {" "}— se espera resolverlo en{" "}
+            <span className="font-semibold">{prioMeta?.sla ?? `${slaHours}h`}</span> desde que fue creado.
+          </p>
+        </div>
+        <span className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full ${stateLabel.bg} ${stateLabel.color}`}>
+          {stateLabel.text}
+        </span>
       </div>
-      <div>
-        <div className="flex justify-between text-xs text-[var(--muted)] mb-1">
-          <span>0%</span>
-          <span className="font-semibold">{pct}% consumido</span>
-          <span>100%</span>
+
+      {/* Barra */}
+      {!isClosed && (
+        <div>
+          <div className="w-full h-2.5 bg-[var(--border)] rounded-full overflow-hidden">
+            <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
+          </div>
+          <div className="flex justify-between text-xs text-[var(--muted)] mt-1.5">
+            <span>Creado: {new Date(createdAt).toLocaleDateString("es-CO", { day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit" })}</span>
+            <span className="font-medium">{timeLabel}</span>
+            <span>Límite: {dueAt.toLocaleDateString("es-CO", { day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit" })}</span>
+          </div>
         </div>
-        <div className="w-full h-3 bg-[var(--border)] rounded-full overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all ${barColor}`}
-            style={{ width: `${pct}%` }}
-          />
+      )}
+
+      {/* Selector de prioridad para admin */}
+      {isAdmin && (
+        <div className="pt-3 border-t border-[var(--border)]">
+          <p className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wide mb-2">Ajustar prioridad manualmente</p>
+          <form
+            action={async (fd: FormData) => {
+              "use server";
+              await changeTicketPriorityAction(ticketId, fd.get("priority") as string);
+            }}
+            className="flex items-center gap-3"
+          >
+            <select
+              name="priority"
+              defaultValue={priority}
+              className="flex-1 text-sm border border-[var(--border)] rounded-md px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-[#d4a373]"
+            >
+              {PRIORITIES.map(p => (
+                <option key={p.value} value={p.value}>
+                  {p.label} — resolución en {p.sla}
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              className="shrink-0 bg-[#d4a373] hover:bg-[#c8935f] text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+            >
+              Aplicar
+            </button>
+          </form>
+          <p className="text-xs text-[var(--muted)] mt-1.5">
+            Al cambiar la prioridad, el SLA se recalcula automáticamente y se deja un comentario en el historial.
+          </p>
         </div>
-        <div className="flex justify-between text-xs text-[var(--muted)] mt-1">
-          <span>Creado: {new Date(createdAt).toLocaleDateString("es-CO", { day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit" })}</span>
-          <span>Vence: {new Date(new Date(createdAt).getTime() + slaTotalMs).toLocaleDateString("es-CO", { day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit" })}</span>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -117,7 +201,7 @@ export default async function TicketDetailPage({
         ← Volver a solicitudes
       </Link>
 
-      {/* -------- Header -------- */}
+      {/* ── Header ── */}
       <div className="habitta-card p-6">
         <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
           <div className="space-y-2">
@@ -125,18 +209,12 @@ export default async function TicketDetailPage({
               <TicketStatusBadge status={ticket.status as TicketStatus} />
               <TicketPriorityBadge priority={ticket.priority as any} />
               {isTelegramTicket && (
-                <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
-                  📲 Telegram
-                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">📲 Telegram</span>
               )}
               {assigneeName ? (
-                <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-[#d4a373]/15 text-[#c8935f]">
-                  👤 {assigneeName}
-                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-[#d4a373]/15 text-[#c8935f]">👤 {assigneeName}</span>
               ) : (
-                <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-red-50 text-red-400">
-                  Sin asignar
-                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-red-50 text-red-400">Sin asignar</span>
               )}
               <TelegramNotifiedBadge notifiedAt={telegramNotifiedAt} />
             </div>
@@ -169,10 +247,7 @@ export default async function TicketDetailPage({
                   <option key={s} value={s}>{TICKET_STATUS_LABELS[s]}</option>
                 ))}
               </select>
-              <button
-                type="submit"
-                className="bg-[#d4a373] hover:bg-[#c8935f] text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
-              >
+              <button type="submit" className="bg-[#d4a373] hover:bg-[#c8935f] text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors">
                 Guardar
               </button>
             </form>
@@ -207,13 +282,7 @@ export default async function TicketDetailPage({
               <p className="text-xs font-semibold habitta-muted uppercase tracking-wide">Adjuntos</p>
               <div className="flex gap-2 mt-1 flex-wrap">
                 {attachments.map((att) => (
-                  <a
-                    key={att.id}
-                    href={att.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="habitta-link text-sm"
-                  >
+                  <a key={att.id} href={att.file_url} target="_blank" rel="noopener noreferrer" className="habitta-link text-sm">
                     📎 {att.file_name}
                   </a>
                 ))}
@@ -223,19 +292,19 @@ export default async function TicketDetailPage({
         </div>
       </div>
 
-      {/* -------- Barra de progreso SLA -------- */}
+      {/* ── SLA ── */}
       <SLAProgressSection
         priority={ticket.priority}
         createdAt={ticket.created_at}
         status={ticket.status}
+        isAdmin={isAdmin}
+        ticketId={id}
       />
 
-      {/* -------- Responsable -------- */}
+      {/* ── Responsable ── */}
       {isAdmin && (
         <div className="habitta-card p-5">
-          <h3 className="font-semibold text-sm text-[var(--foreground)] uppercase tracking-wide mb-3">
-            👥 Responsable asignado
-          </h3>
+          <h3 className="font-semibold text-sm text-[var(--foreground)] uppercase tracking-wide mb-3">👥 Responsable asignado</h3>
           <form
             action={async (formData: FormData) => {
               "use server";
@@ -256,17 +325,14 @@ export default async function TicketDetailPage({
                 </option>
               ))}
             </select>
-            <button
-              type="submit"
-              className="bg-[#d4a373] hover:bg-[#c8935f] text-white px-4 py-2 rounded-md text-sm font-medium transition-colors shrink-0"
-            >
+            <button type="submit" className="bg-[#d4a373] hover:bg-[#c8935f] text-white px-4 py-2 rounded-md text-sm font-medium transition-colors shrink-0">
               Asignar
             </button>
           </form>
         </div>
       )}
 
-      {/* -------- Respuesta Administrativa -------- */}
+      {/* ── Respuesta administrativa ── */}
       {ticket.response ? (
         <div className="rounded-xl border border-[#d4a373]/40 bg-[#d4a373]/8 p-5 space-y-2">
           <p className="text-xs font-bold uppercase tracking-widest text-[#c8935f]">📨 Respuesta del administrador</p>
@@ -300,17 +366,14 @@ export default async function TicketDetailPage({
               placeholder="Escribe la respuesta oficial para el residente o solicitante..."
               className="w-full text-sm border border-[var(--border)] p-3 rounded-md outline-none focus:ring-2 focus:ring-[#d4a373] bg-white resize-none"
             />
-            <button
-              type="submit"
-              className="bg-[#d4a373] hover:bg-[#c8935f] text-white px-5 py-2 rounded-md font-medium text-sm transition-colors"
-            >
+            <button type="submit" className="bg-[#d4a373] hover:bg-[#c8935f] text-white px-5 py-2 rounded-md font-medium text-sm transition-colors">
               Guardar respuesta
             </button>
           </form>
         </div>
       )}
 
-      {/* -------- Responder por Telegram -------- */}
+      {/* ── Telegram reply ── */}
       {isAdmin && isTelegramTicket && telegramSession && (
         <TelegramReplyForm
           ticketId={ticket.id}
@@ -319,12 +382,12 @@ export default async function TicketDetailPage({
         />
       )}
 
-      {/* -------- Actualizaciones -------- */}
+      {/* ── Actualizaciones ── */}
       <div className="space-y-4">
         <h3 className="font-bold text-lg habitta-title">Actualizaciones</h3>
         <div className="space-y-4">
           {comments.length === 0 ? (
-            <p className="text-sm habitta-muted italic">No hay actualizaciones aún. Sé el primero en responder.</p>
+            <p className="text-sm habitta-muted italic">No hay actualizaciones aún.</p>
           ) : (
             comments.map((c) => (
               <div key={c.id} className="habitta-card p-4 flex gap-3">
@@ -333,7 +396,7 @@ export default async function TicketDetailPage({
                 </div>
                 <div>
                   <p className="text-sm font-semibold">{c.profiles?.full_name}</p>
-                  <p className="text-sm habitta-muted mt-1">{c.message}</p>
+                  <p className="text-sm habitta-muted mt-1 whitespace-pre-wrap">{c.message}</p>
                 </div>
               </div>
             ))
@@ -354,16 +417,13 @@ export default async function TicketDetailPage({
             placeholder="Escribe una actualización o respuesta..."
             className="w-full text-sm border border-[var(--border)] p-3 rounded-md outline-none focus:ring-2 focus:ring-[#d4a373] bg-white resize-none"
           />
-          <button
-            type="submit"
-            className="mt-3 bg-[var(--foreground)] text-[var(--background)] px-4 py-2 rounded-md font-medium text-sm hover:opacity-80 transition-opacity"
-          >
+          <button type="submit" className="mt-3 bg-[var(--foreground)] text-[var(--background)] px-4 py-2 rounded-md font-medium text-sm hover:opacity-80 transition-opacity">
             Enviar respuesta
           </button>
         </form>
       </div>
 
-      {/* -------- Historial (audit logs) -------- */}
+      {/* ── Historial ── */}
       <AuditHistory logs={auditLogs} />
     </div>
   );

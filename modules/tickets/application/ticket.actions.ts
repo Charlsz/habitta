@@ -19,6 +19,7 @@ import {
 } from "@/modules/notifications/infrastructure/notification.repository";
 import { createAuditLog } from "@/modules/audit/infrastructure/audit.repository";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { SLA_HOURS } from "@/lib/sla";
 
 function getAdmin() {
   return createAdminClient(
@@ -35,20 +36,71 @@ const PRIORITY_LABEL: Record<string, string> = {
   low:    "🟢 Baja",
 };
 
+// ── AI: decide prioridad y razón ─────────────────────────────────────────────
+async function aiDecidePriority(
+  title: string,
+  description: string
+): Promise<{ priority: string; reason: string }> {
+  try {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) throw new Error("No OPENAI_API_KEY");
+
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        temperature: 0,
+        max_tokens: 200,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content:
+              `Eres el sistema de priorización de tickets de Habitta, una plataforma de gestión residencial.\n` +
+              `Clasifica el ticket según estas reglas:\n` +
+              `- urgent: Riesgo de vida, incendio, inundación, falla eléctrica grave, robo activo. SLA: 2h.\n` +
+              `- high: Corte de servicios (agua, gas, electricidad), ascensor dañado, seguridad comprometida. SLA: 24h.\n` +
+              `- medium: Daños visibles no urgentes, solicitudes de mantenimiento, problemas de ruido reiterados. SLA: 72h.\n` +
+              `- low: Consultas, sugerencias, mejoras estéticas. SLA: 7 días.\n` +
+              `Responde SOLO JSON: { "priority": "urgent|high|medium|low", "reason": "explicación breve en español de máx 120 caracteres" }`,
+          },
+          { role: "user", content: `Título: ${title}\n\nDescripción: ${description}` },
+        ],
+      }),
+    });
+
+    const json = await res.json();
+    const parsed = JSON.parse(json.choices?.[0]?.message?.content ?? "{}");
+    if (["urgent", "high", "medium", "low"].includes(parsed.priority)) {
+      return { priority: parsed.priority, reason: parsed.reason ?? "" };
+    }
+  } catch { /* fallback */ }
+
+  return { priority: "medium", reason: "Prioridad asignada por defecto (IA no disponible)." };
+}
+
+// ── Create ticket ─────────────────────────────────────────────────────────────
 export async function createTicketAction(formData: FormData) {
   try {
     const user    = await requireAuth();
     const rawData = Object.fromEntries(formData.entries());
     const orgId   = String(rawData.organization_id);
 
+    const title       = String(rawData.title);
+    const description = String(rawData.description);
+
+    // IA decide prioridad (ignora lo que venga del formulario)
+    const { priority: aiPriority, reason: aiReason } = await aiDecidePriority(title, description);
+
     const data = {
       organization_id: orgId,
       asset_id:    rawData.asset_id    ? String(rawData.asset_id)    : undefined,
       category_id: rawData.category_id ? String(rawData.category_id) : undefined,
-      title:       String(rawData.title),
-      description: String(rawData.description),
-      priority:    String(rawData.priority),
-      due_date:    rawData.due_date    ? String(rawData.due_date)    : undefined,
+      title,
+      description,
+      priority:  aiPriority,
+      due_date:  rawData.due_date ? String(rawData.due_date) : undefined,
     };
 
     const parsed = ticketSchema.safeParse(data);
@@ -66,6 +118,23 @@ export async function createTicketAction(formData: FormData) {
       user.id
     );
 
+    // Comentario automático de la IA explicando la prioridad
+    const slaHours = SLA_HOURS[aiPriority] ?? 72;
+    const slaText  =
+      slaHours < 24
+        ? `${slaHours} hora${slaHours > 1 ? "s" : ""}`
+        : slaHours < 168
+        ? `${slaHours / 24} día${slaHours / 24 > 1 ? "s" : ""}`
+        : "7 días";
+
+    await addTicketComment(
+      newTicket.id,
+      user.id,
+      `🤖 **Prioridad asignada por IA: ${PRIORITY_LABEL[aiPriority]}**\n` +
+        `${aiReason}\n` +
+        `Tiempo de resolución esperado: ${slaText}.`
+    ).catch(() => {});
+
     const file = formData.get("attachment") as File;
     if (file && file.size > 0) {
       await uploadTicketAttachment(file, orgId, newTicket.id, user.id);
@@ -74,39 +143,16 @@ export async function createTicketAction(formData: FormData) {
     createAuditLog({
       orgId, userId: user.id, entityType: "ticket", entityId: newTicket.id,
       action: "created",
-      newValue: { title: parsed.data.title, priority: parsed.data.priority, status: "open" },
+      newValue: { title, priority: aiPriority, status: "open" },
     });
 
-    // — Notificación según prioridad —
-    const priority  = parsed.data.priority;
-    const isUrgent  = priority === "urgent";
-    const isHigh    = priority === "high";
-    const prioLabel = PRIORITY_LABEL[priority] ?? priority;
-
-    if (isUrgent) {
-      // Urgente: notificación de error (rojo) para llamar la atención inmediatamente
-      notifyOrgAdmins(
-        orgId,
-        `🚨 Ticket urgente: ${parsed.data.title}`,
-        `Prioridad ${prioLabel} — requiere atención inmediata. Asigna un responsable ahora.`,
-        "error"
-      ).catch(() => {});
-    } else if (isHigh) {
-      // Alta: warning (amarillo)
-      notifyOrgAdmins(
-        orgId,
-        `⚠️ Ticket de alta prioridad: ${parsed.data.title}`,
-        `Prioridad ${prioLabel} — revísalo pronto y asigna un responsable.`,
-        "warning"
-      ).catch(() => {});
+    const prioLabel = PRIORITY_LABEL[aiPriority] ?? aiPriority;
+    if (aiPriority === "urgent") {
+      notifyOrgAdmins(orgId, `🚨 Ticket urgente: ${title}`, `Prioridad ${prioLabel} — requiere atención inmediata.`, "error").catch(() => {});
+    } else if (aiPriority === "high") {
+      notifyOrgAdmins(orgId, `⚠️ Ticket de alta prioridad: ${title}`, `Prioridad ${prioLabel} — revísalo pronto.`, "warning").catch(() => {});
     } else {
-      // Media / Baja: info normal
-      notifyOrgAdmins(
-        orgId,
-        `🎫 Nuevo ticket: ${parsed.data.title}`,
-        `Prioridad ${prioLabel} — pendiente de revisión.`,
-        "info"
-      ).catch(() => {});
+      notifyOrgAdmins(orgId, `🎫 Nuevo ticket: ${title}`, `Prioridad ${prioLabel} — pendiente de revisión.`, "info").catch(() => {});
     }
 
     revalidatePath("/tickets");
@@ -117,6 +163,54 @@ export async function createTicketAction(formData: FormData) {
   }
 }
 
+// ── Change priority (admin) ───────────────────────────────────────────────────
+export async function changeTicketPriorityAction(ticketId: string, priority: string) {
+  try {
+    const user  = await requireAuth();
+    const orgId = await getTicketOrganizationId(ticketId);
+    await requireOrgRole(orgId, ["owner", "admin"]);
+
+    const admin = getAdmin();
+    const { data: t } = await admin
+      .from("tickets")
+      .select("priority, title, creator_id")
+      .eq("id", ticketId)
+      .single();
+
+    await admin.from("tickets").update({ priority }).eq("id", ticketId);
+
+    const slaHours = SLA_HOURS[priority] ?? 72;
+    const slaText  =
+      slaHours < 24
+        ? `${slaHours} hora${slaHours > 1 ? "s" : ""}`
+        : slaHours < 168
+        ? `${slaHours / 24} día${slaHours / 24 > 1 ? "s" : ""}`
+        : "7 días";
+
+    // Comentario automático del cambio manual
+    await addTicketComment(
+      ticketId,
+      user.id,
+      `👤 **Prioridad cambiada manualmente a ${PRIORITY_LABEL[priority]}**\n` +
+        `El administrador ajustó la prioridad. Nuevo tiempo de resolución esperado: ${slaText}.`
+    ).catch(() => {});
+
+    createAuditLog({
+      orgId, userId: user.id, entityType: "ticket", entityId: ticketId,
+      action: "priority_changed",
+      oldValue: { priority: t?.priority },
+      newValue: { priority },
+    });
+
+    revalidatePath(`/tickets/${ticketId}`);
+    revalidatePath("/tickets");
+    return { success: true };
+  } catch (e: any) {
+    return { error: e.message };
+  }
+}
+
+// ── Change status ─────────────────────────────────────────────────────────────
 export async function changeTicketStatusAction(ticketId: string, status: TicketStatus) {
   try {
     const user  = await requireAuth();
@@ -128,11 +222,7 @@ export async function changeTicketStatusAction(ticketId: string, status: TicketS
     let creatorId:      string | null = null;
     try {
       const admin = getAdmin();
-      const { data: t } = await admin
-        .from("tickets")
-        .select("status, title, creator_id")
-        .eq("id", ticketId)
-        .single();
+      const { data: t } = await admin.from("tickets").select("status, title, creator_id").eq("id", ticketId).single();
       previousStatus = t?.status    ?? null;
       ticketTitle    = t?.title     ?? null;
       creatorId      = t?.creator_id ?? null;
@@ -147,33 +237,14 @@ export async function changeTicketStatusAction(ticketId: string, status: TicketS
       newValue: { status },
     });
 
-    // — Notificaciones por cambio de estado —
     if (status === "resolved" && creatorId && ticketTitle) {
-      createNotification(
-        orgId, creatorId,
-        `✅ Ticket resuelto: ${ticketTitle}`,
-        `El ticket ha sido marcado como resuelto. Si el problema persiste, puédelo reabrir.`,
-        "success"
-      ).catch(() => {});
+      createNotification(orgId, creatorId, `✅ Ticket resuelto: ${ticketTitle}`, `El ticket ha sido marcado como resuelto.`, "success").catch(() => {});
     }
-
     if (status === "closed" && creatorId && ticketTitle) {
-      createNotification(
-        orgId, creatorId,
-        `📦 Ticket cerrado: ${ticketTitle}`,
-        `El ticket fue cerrado definitivamente.`,
-        "info"
-      ).catch(() => {});
+      createNotification(orgId, creatorId, `📦 Ticket cerrado: ${ticketTitle}`, `El ticket fue cerrado definitivamente.`, "info").catch(() => {});
     }
-
     if (status === "rejected") {
-      // Notificar a admins que un ticket fue rechazado (para auditoría)
-      notifyOrgAdmins(
-        orgId,
-        `❌ Ticket rechazado: ${ticketTitle ?? ticketId}`,
-        `Un ticket fue marcado como rechazado. Verifica el historial si fue un error.`,
-        "warning"
-      ).catch(() => {});
+      notifyOrgAdmins(orgId, `❌ Ticket rechazado: ${ticketTitle ?? ticketId}`, `Un ticket fue marcado como rechazado.`, "warning").catch(() => {});
     }
 
     revalidatePath(`/tickets/${ticketId}`);
@@ -185,6 +256,7 @@ export async function changeTicketStatusAction(ticketId: string, status: TicketS
   }
 }
 
+// ── Respond ───────────────────────────────────────────────────────────────────
 export async function respondToTicketAction(formData: FormData) {
   try {
     const user     = await requireAuth();
@@ -196,21 +268,11 @@ export async function respondToTicketAction(formData: FormData) {
 
     await respondToTicket(ticketId, response);
 
-    // Notificar al creador del ticket que recibió respuesta
     try {
       const admin = getAdmin();
-      const { data: t } = await admin
-        .from("tickets")
-        .select("creator_id, title")
-        .eq("id", ticketId)
-        .single();
+      const { data: t } = await admin.from("tickets").select("creator_id, title").eq("id", ticketId).single();
       if (t?.creator_id) {
-        createNotification(
-          orgId, t.creator_id,
-          `💬 Respuesta en tu ticket: ${t.title}`,
-          `El equipo ha respondido a tu solicitud. Entra al ticket para ver los detalles.`,
-          "info"
-        ).catch(() => {});
+        createNotification(orgId, t.creator_id, `💬 Respuesta en tu ticket: ${t.title}`, `El equipo ha respondido a tu solicitud.`, "info").catch(() => {});
       }
     } catch { /* no bloquear */ }
 
@@ -227,6 +289,7 @@ export async function respondToTicketAction(formData: FormData) {
   }
 }
 
+// ── Assign ────────────────────────────────────────────────────────────────────
 export async function assignTicketAction(formData: FormData) {
   try {
     const user       = await requireAuth();
@@ -238,22 +301,12 @@ export async function assignTicketAction(formData: FormData) {
     const newAssignee = assignedTo && String(assignedTo) !== "" ? String(assignedTo) : null;
     await assignTicket(ticketId, newAssignee);
 
-    // Notificar a la persona asignada
     if (newAssignee) {
       try {
         const admin = getAdmin();
-        const { data: t } = await admin
-          .from("tickets")
-          .select("title")
-          .eq("id", ticketId)
-          .single();
+        const { data: t } = await admin.from("tickets").select("title").eq("id", ticketId).single();
         if (t?.title) {
-          createNotification(
-            orgId, newAssignee,
-            `👤 Se te asignó un ticket: ${t.title}`,
-            `Tienes un nuevo ticket asignado. Revísalo y actualiza su estado.`,
-            "info"
-          ).catch(() => {});
+          createNotification(orgId, newAssignee, `👤 Se te asignó un ticket: ${t.title}`, `Tienes un nuevo ticket asignado.`, "info").catch(() => {});
         }
       } catch { /* no bloquear */ }
     }
@@ -272,6 +325,7 @@ export async function assignTicketAction(formData: FormData) {
   }
 }
 
+// ── Add comment ───────────────────────────────────────────────────────────────
 export async function addTicketCommentAction(formData: FormData) {
   try {
     const user     = await requireAuth();
