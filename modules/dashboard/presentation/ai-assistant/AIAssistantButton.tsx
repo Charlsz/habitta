@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect, useTransition } from "react";
-import { askAIAssistant } from "@/modules/dashboard/application/ai-assistant.actions";
+import { useState, useRef, useEffect, useTransition, useCallback } from "react";
+import { askAIAssistant, getOrganizationAIContext } from "@/modules/dashboard/application/ai-assistant.actions";
 
 interface Message {
   role: "user" | "assistant";
@@ -9,20 +9,56 @@ interface Message {
 }
 
 interface Props {
-  context: any;
+  initialContext: any;
 }
 
-export function AIAssistantButton({ context }: Props) {
-  const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
+/** Lee el parámetro ?org= de la URL del cliente */
+function getOrgIdFromURL(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  return new URLSearchParams(window.location.search).get("org") ?? undefined;
+}
+
+export function AIAssistantButton({ initialContext }: Props) {
+  const [open, setOpen]           = useState(false);
+  const [messages, setMessages]   = useState<Message[]>([]);
+  const [input, setInput]         = useState("");
+  const [context, setContext]     = useState<any>(initialContext);
+  const [loadingCtx, setLoadingCtx] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const bottomRef  = useRef<HTMLDivElement>(null);
+  const inputRef   = useRef<HTMLInputElement>(null);
+
+  /**
+   * Cada vez que se abre el panel, re-carga el contexto con el org activo
+   * según la URL del cliente en ese momento.
+   * Esto garantiza que si el admin cambió de org, el asistente lo refleje.
+   */
+  const refreshContext = useCallback(async () => {
+    const orgId = getOrgIdFromURL();
+    // Solo recargar si el org cambió respecto al contexto actual
+    if (orgId && orgId === context?.orgId) return;
+    setLoadingCtx(true);
+    try {
+      const fresh = await getOrganizationAIContext(orgId);
+      if (fresh) {
+        setContext(fresh);
+        // Resetear el chat cuando cambia la org
+        setMessages([
+          {
+            role: "assistant",
+            content: `¡Hola! Ahora estoy analizando **${fresh.org?.name}**. ¿En qué te puedo ayudar?`,
+          },
+        ]);
+      }
+    } finally {
+      setLoadingCtx(false);
+    }
+  }, [context?.orgId]);
 
   useEffect(() => {
     if (open) {
       setTimeout(() => inputRef.current?.focus(), 100);
+      refreshContext();
       if (messages.length === 0) {
         setMessages([
           {
@@ -75,7 +111,7 @@ export function AIAssistantButton({ context }: Props) {
         {open ? "✕" : "✦"}
       </button>
 
-      {/* Panel slide-over */}
+      {/* Panel */}
       {open && (
         <div className="fixed bottom-24 right-6 z-50 w-[380px] max-w-[calc(100vw-2rem)] h-[520px] flex flex-col rounded-2xl shadow-2xl border border-[var(--border)] bg-[var(--background)] overflow-hidden">
           {/* Header */}
@@ -84,10 +120,15 @@ export function AIAssistantButton({ context }: Props) {
             style={{ backgroundColor: "#d4a373" }}
           >
             <span className="text-white text-lg">✦</span>
-            <div>
+            <div className="flex-1 min-w-0">
               <p className="text-white font-semibold text-sm leading-tight">Asistente Habitta</p>
-              <p className="text-white/80 text-xs">{context?.org?.name ?? "Tu organización"}</p>
+              <p className="text-white/80 text-xs truncate">
+                {loadingCtx ? "Cargando contexto..." : (context?.org?.name ?? "Tu organización")}
+              </p>
             </div>
+            {loadingCtx && (
+              <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin shrink-0" />
+            )}
           </div>
 
           {/* Mensajes */}
@@ -105,9 +146,7 @@ export function AIAssistantButton({ context }: Props) {
                       ? "text-white rounded-br-sm"
                       : "bg-[var(--sidebar-bg)] text-[var(--foreground)] rounded-bl-sm border border-[var(--border)]"
                   }`}
-                  style={
-                    msg.role === "user" ? { backgroundColor: "#d4a373" } : {}
-                  }
+                  style={msg.role === "user" ? { backgroundColor: "#d4a373" } : {}}
                 >
                   {msg.content}
                 </div>
@@ -135,12 +174,12 @@ export function AIAssistantButton({ context }: Props) {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
               placeholder="Pregunta sobre tus tickets..."
-              disabled={isPending}
+              disabled={isPending || loadingCtx}
               className="flex-1 text-sm px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:ring-1 focus:ring-[#d4a373] disabled:opacity-50"
             />
             <button
               onClick={handleSend}
-              disabled={isPending || !input.trim()}
+              disabled={isPending || !input.trim() || loadingCtx}
               className="px-3 py-2 rounded-lg text-white text-sm font-medium transition-opacity disabled:opacity-40"
               style={{ backgroundColor: "#d4a373" }}
             >

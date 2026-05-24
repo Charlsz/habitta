@@ -2,7 +2,11 @@
 
 import { createClient } from "@/lib/supabase/server";
 
-export async function getOrganizationAIContext() {
+/**
+ * Obtiene el contexto de IA para una org específica.
+ * Si no se pasa orgId, usa la primera org del usuario (fallback).
+ */
+export async function getOrganizationAIContext(orgId?: string) {
   const supabase = await createClient();
 
   const {
@@ -10,32 +14,46 @@ export async function getOrganizationAIContext() {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("No autenticado");
 
-  // Obtener organización del usuario
+  let resolvedOrgId = orgId;
+
+  // Si no se pasó orgId explícito, tomar la primera membership del usuario
+  if (!resolvedOrgId) {
+    const { data: membership } = await supabase
+      .from("organization_members")
+      .select("organization_id")
+      .eq("user_id", user.id)
+      .limit(1)
+      .maybeSingle();
+    resolvedOrgId = membership?.organization_id;
+  }
+
+  if (!resolvedOrgId) return null;
+
+  // Verificar que el usuario pertenece a esa org
   const { data: membership } = await supabase
     .from("organization_members")
     .select("organization_id, organizations(id, name, type, city)")
     .eq("user_id", user.id)
-    .limit(1)
+    .eq("organization_id", resolvedOrgId)
     .maybeSingle();
 
   if (!membership) return null;
 
-  const orgId = membership.organization_id;
   const org = membership.organizations as any;
 
   // Tickets recientes (últimos 30)
   const { data: tickets } = await supabase
     .from("tickets")
     .select("id, title, type, priority, status, created_at, updated_at")
-    .eq("organization_id", orgId)
+    .eq("organization_id", resolvedOrgId)
     .order("created_at", { ascending: false })
     .limit(30);
 
-  // Conteos por estado
+  // Todos los tickets para conteos
   const { data: allTickets } = await supabase
     .from("tickets")
     .select("type, priority, status, created_at")
-    .eq("organization_id", orgId);
+    .eq("organization_id", resolvedOrgId);
 
   const counts = {
     total: allTickets?.length ?? 0,
@@ -53,13 +71,13 @@ export async function getOrganizationAIContext() {
     })),
   };
 
-  // Tickets del mes actual
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
   const ticketsThisMonth = allTickets?.filter((t) => t.created_at >= startOfMonth) ?? [];
 
   return {
     org,
+    orgId: resolvedOrgId,
     counts,
     ticketsThisMonth: ticketsThisMonth.length,
     recentTickets: tickets ?? [],
@@ -89,16 +107,16 @@ export async function askAIAssistant(
 - Creados este mes: ${context?.ticketsThisMonth}
 
 **Tickets por tipo:**
-${context?.counts.byType.map((t) => `- ${t.type}: ${t.count}`).join("\n")}
+${context?.counts.byType.map((t: any) => `- ${t.type}: ${t.count}`).join("\n")}
 
 **Últimos 30 tickets (título | tipo | prioridad | estado | fecha):**
 ${context?.recentTickets
-  .map((t) => `- "${t.title}" | ${t.type} | ${t.priority} | ${t.status} | ${new Date(t.created_at).toLocaleDateString("es-CO")}`)
+  .map((t: any) => `- "${t.title}" | ${t.type} | ${t.priority} | ${t.status} | ${new Date(t.created_at).toLocaleDateString("es-CO")}`)
   .join("\n")}
 
 ## REGLAS
 - Solo responde preguntas sobre estos datos o la operación de ${context?.org?.name}.
-- Si te preguntan algo fuera de este scope (código, recetas, cultura general, etc.) responde amablemente: "Solo puedo ayudarte con información sobre los tickets y operaciones de ${context?.org?.name}."
+- Si te preguntan algo fuera de este scope responde: "Solo puedo ayudarte con información sobre los tickets y operaciones de ${context?.org?.name}."
 - Responde siempre en español, de forma concisa y útil.
 - Puedes hacer cálculos, comparaciones y resúmenes basados en los datos anteriores.`;
 
