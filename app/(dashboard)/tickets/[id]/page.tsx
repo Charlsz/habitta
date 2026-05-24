@@ -21,7 +21,7 @@ import { TelegramReplyForm } from "@/modules/telegram/presentation/telegram-repl
 import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
 import { TicketStatus, TICKET_STATUS_LABELS } from "@/modules/tickets/domain/ticket.schema";
-import { SLA_HOURS } from "@/lib/sla";
+import { DEADLINE_HOURS } from "@/lib/sla";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,10 +33,10 @@ const ALL_STATUSES: TicketStatus[] = [
 ];
 
 const PRIORITIES = [
-  { value: "urgent", label: "🔴 Urgente",  sla: "2 horas",  color: "text-red-600" },
-  { value: "high",   label: "🟠 Alta",     sla: "24 horas", color: "text-orange-500" },
-  { value: "medium", label: "🟡 Media",    sla: "3 días",   color: "text-yellow-600" },
-  { value: "low",    label: "🟢 Baja",     sla: "7 días",   color: "text-green-600" },
+  { value: "urgent", label: "🔴 Urgente",  deadline: "2 horas",  color: "text-red-600" },
+  { value: "high",   label: "🟠 Alta",     deadline: "24 horas", color: "text-orange-500" },
+  { value: "medium", label: "🟡 Media",    deadline: "3 días",   color: "text-yellow-600" },
+  { value: "low",    label: "🟢 Baja",     deadline: "7 días",   color: "text-green-600" },
 ];
 
 function formatDate(iso: string | null | undefined) {
@@ -55,32 +55,29 @@ async function getTelegramSession(sessionId: string) {
   return data;
 }
 
-// ── SLA Section mejorada ──────────────────────────────────────────────────────
-function SLAProgressSection({
+function DeadlineSection({
   priority, createdAt, status, isAdmin, ticketId,
 }: {
   priority: string; createdAt: string; status: string;
   isAdmin: boolean; ticketId: string;
 }) {
-  const isClosed = status === "closed" || status === "resolved";
-  const slaHours  = SLA_HOURS[priority] ?? 72;
-  const slaTotalMs = slaHours * 3_600_000;
-  const elapsed    = Date.now() - new Date(createdAt).getTime();
-  const pct        = Math.min(Math.round((elapsed / slaTotalMs) * 100), 100);
-  const slaState   = pct < 75 ? "on_track" : pct < 100 ? "at_risk" : "overdue";
+  const isClosed    = status === "closed" || status === "resolved";
+  const deadlineHrs = DEADLINE_HOURS[priority] ?? 72;
+  const totalMs     = deadlineHrs * 3_600_000;
+  const elapsed     = Date.now() - new Date(createdAt).getTime();
+  const pct         = Math.min(Math.round((elapsed / totalMs) * 100), 100);
+  const state       = pct < 75 ? "on_track" : pct < 100 ? "at_risk" : "overdue";
 
-  const barColor = slaState === "on_track" ? "bg-green-500" : slaState === "at_risk" ? "bg-yellow-400" : "bg-red-500";
-  const dueAt    = new Date(new Date(createdAt).getTime() + slaTotalMs);
-  const now      = new Date();
-  const diffMs   = dueAt.getTime() - now.getTime();
+  const barColor = state === "on_track" ? "bg-green-500" : state === "at_risk" ? "bg-yellow-400" : "bg-red-500";
+  const dueAt    = new Date(new Date(createdAt).getTime() + totalMs);
+  const diffMs   = dueAt.getTime() - Date.now();
 
-  // Etiqueta humana de tiempo restante / vencido
   function humanTime(ms: number) {
-    const abs = Math.abs(ms);
+    const abs  = Math.abs(ms);
     const mins = Math.round(abs / 60_000);
-    if (mins < 60)   return `${mins} min`;
+    if (mins < 60) return `${mins} min`;
     const h = Math.floor(mins / 60);
-    if (h < 48)      return `${h} hora${h !== 1 ? "s" : ""}`;
+    if (h < 48) return `${h} hora${h !== 1 ? "s" : ""}`;
     const d = Math.floor(h / 24);
     return `${d} día${d !== 1 ? "s" : ""}`;
   }
@@ -92,17 +89,15 @@ function SLAProgressSection({
     : `Venció hace ${humanTime(diffMs)}`;
 
   const stateLabel =
-    isClosed    ? { text: "Cerrado",  bg: "bg-gray-100",   color: "text-gray-500" } :
-    slaState === "on_track" ? { text: "A tiempo",  bg: "bg-green-50",  color: "text-green-700" } :
-    slaState === "at_risk"  ? { text: "En riesgo", bg: "bg-yellow-50", color: "text-yellow-700" } :
-                              { text: "Vencido",   bg: "bg-red-50",    color: "text-red-600" };
+    isClosed         ? { text: "Cerrado",   bg: "bg-gray-100",   color: "text-gray-500" } :
+    state === "on_track" ? { text: "A tiempo",  bg: "bg-green-50",  color: "text-green-700" } :
+    state === "at_risk"  ? { text: "En riesgo", bg: "bg-yellow-50", color: "text-yellow-700" } :
+                           { text: "Vencido",   bg: "bg-red-50",    color: "text-red-600" };
 
-  // Explicación humana por prioridad
   const prioMeta = PRIORITIES.find(p => p.value === priority);
 
   return (
     <div className="habitta-card p-5 space-y-4">
-      {/* Cabecera */}
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="font-semibold text-sm text-[var(--foreground)]">⏱ Tiempo de resolución</h3>
@@ -110,7 +105,7 @@ function SLAProgressSection({
             Este ticket tiene prioridad{" "}
             <span className={`font-semibold ${prioMeta?.color ?? ""}`}>{prioMeta?.label ?? priority}</span>
             {" "}— se espera resolverlo en{" "}
-            <span className="font-semibold">{prioMeta?.sla ?? `${slaHours}h`}</span> desde que fue creado.
+            <span className="font-semibold">{prioMeta?.deadline ?? `${deadlineHrs}h`}</span> desde que fue creado.
           </p>
         </div>
         <span className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full ${stateLabel.bg} ${stateLabel.color}`}>
@@ -118,7 +113,6 @@ function SLAProgressSection({
         </span>
       </div>
 
-      {/* Barra */}
       {!isClosed && (
         <div>
           <div className="w-full h-2.5 bg-[var(--border)] rounded-full overflow-hidden">
@@ -132,10 +126,9 @@ function SLAProgressSection({
         </div>
       )}
 
-      {/* Selector de prioridad para admin */}
       {isAdmin && (
         <div className="pt-3 border-t border-[var(--border)]">
-          <p className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wide mb-2">Ajustar prioridad manualmente</p>
+          <p className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wide mb-2">Ajustar prioridad</p>
           <form
             action={async (fd: FormData) => {
               "use server";
@@ -150,7 +143,7 @@ function SLAProgressSection({
             >
               {PRIORITIES.map(p => (
                 <option key={p.value} value={p.value}>
-                  {p.label} — resolución en {p.sla}
+                  {p.label} — resolución en {p.deadline}
                 </option>
               ))}
             </select>
@@ -162,7 +155,7 @@ function SLAProgressSection({
             </button>
           </form>
           <p className="text-xs text-[var(--muted)] mt-1.5">
-            Al cambiar la prioridad, el SLA se recalcula automáticamente y se deja un comentario en el historial.
+            Al cambiar la prioridad, el tiempo límite se recalcula automáticamente.
           </p>
         </div>
       )}
@@ -201,7 +194,7 @@ export default async function TicketDetailPage({
         ← Volver a solicitudes
       </Link>
 
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="habitta-card p-6">
         <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
           <div className="space-y-2">
@@ -292,8 +285,8 @@ export default async function TicketDetailPage({
         </div>
       </div>
 
-      {/* ── SLA ── */}
-      <SLAProgressSection
+      {/* Tiempo de resolución */}
+      <DeadlineSection
         priority={ticket.priority}
         createdAt={ticket.created_at}
         status={ticket.status}
@@ -301,7 +294,7 @@ export default async function TicketDetailPage({
         ticketId={id}
       />
 
-      {/* ── Responsable ── */}
+      {/* Responsable */}
       {isAdmin && (
         <div className="habitta-card p-5">
           <h3 className="font-semibold text-sm text-[var(--foreground)] uppercase tracking-wide mb-3">👥 Responsable asignado</h3>
@@ -332,7 +325,7 @@ export default async function TicketDetailPage({
         </div>
       )}
 
-      {/* ── Respuesta administrativa ── */}
+      {/* Respuesta administrativa */}
       {ticket.response ? (
         <div className="rounded-xl border border-[#d4a373]/40 bg-[#d4a373]/8 p-5 space-y-2">
           <p className="text-xs font-bold uppercase tracking-widest text-[#c8935f]">📨 Respuesta del administrador</p>
@@ -373,7 +366,6 @@ export default async function TicketDetailPage({
         </div>
       )}
 
-      {/* ── Telegram reply ── */}
       {isAdmin && isTelegramTicket && telegramSession && (
         <TelegramReplyForm
           ticketId={ticket.id}
@@ -382,7 +374,7 @@ export default async function TicketDetailPage({
         />
       )}
 
-      {/* ── Actualizaciones ── */}
+      {/* Actualizaciones */}
       <div className="space-y-4">
         <h3 className="font-bold text-lg habitta-title">Actualizaciones</h3>
         <div className="space-y-4">
@@ -423,7 +415,7 @@ export default async function TicketDetailPage({
         </form>
       </div>
 
-      {/* ── Historial ── */}
+      {/* Historial */}
       <AuditHistory logs={auditLogs} />
     </div>
   );

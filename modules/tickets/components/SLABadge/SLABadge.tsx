@@ -1,49 +1,39 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getSLAResult, SLA_STYLES, type SLAResult } from "@/lib/sla";
+import { getDeadlineResult, DEADLINE_STYLES, type DeadlineResult } from "@/lib/sla";
 
 interface Props {
   priority:  string;
   createdAt: string;
   status:    string;
-  /** Si true muestra también la barra de progreso */
   showBar?:  boolean;
 }
 
 export function SLABadge({ priority, createdAt, status, showBar = false }: Props) {
-  const [result, setResult] = useState<SLAResult | null>(() =>
-    getSLAResult(priority, createdAt, status)
+  const [result, setResult] = useState<DeadlineResult | null>(() =>
+    getDeadlineResult(priority, createdAt, status)
   );
 
-  // Actualiza cada minuto para que el tiempo restante sea en vivo
   useEffect(() => {
     const id = setInterval(() => {
-      setResult(getSLAResult(priority, createdAt, status));
+      setResult(getDeadlineResult(priority, createdAt, status));
     }, 60_000);
     return () => clearInterval(id);
   }, [priority, createdAt, status]);
 
   if (!result) return null;
 
-  const style = SLA_STYLES[result.status];
+  const style    = DEADLINE_STYLES[result.status];
   const pctCapped = Math.min(result.percentElapsed, 100);
-
-  const barColor =
+  const barColor  =
     result.status === "on_track" ? "bg-green-500" :
-    result.status === "at_risk"  ? "bg-yellow-400" :
-    "bg-red-500";
+    result.status === "at_risk"  ? "bg-yellow-400" : "bg-red-500";
 
   return (
     <div className="space-y-1.5">
       <span
-        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ring-1 ${
-          style.bg
-        } ${
-          style.text
-        } ${
-          style.ring
-        }`}
+        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ring-1 ${style.bg} ${style.text} ${style.ring}`}
       >
         <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
         {result.label}

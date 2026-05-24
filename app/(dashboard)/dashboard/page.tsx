@@ -21,7 +21,6 @@ export default async function DashboardPage({
 }) {
   const { org: orgId } = await searchParams;
 
-  // Guard: si no hay ?org= válido, volver a Organizaciones
   if (!orgId) redirect("/organizations");
 
   const user = await requireAuth();
@@ -70,7 +69,7 @@ export default async function DashboardPage({
           ].join(" ")}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[var(--foreground)]/50">En riesgo SLA</span>
+            <span className="text-xs font-semibold text-[var(--foreground)]/50">Tickets en riesgo</span>
             <ShieldAlert className={`w-4 h-4 ${metrics.atRiskCount > 0 ? "text-red-400" : "text-[var(--foreground)]/30"}`} />
           </div>
           <p className={`text-3xl font-bold ${metrics.atRiskCount > 0 ? "text-red-500" : "text-[var(--foreground)]"}`}>
@@ -82,14 +81,11 @@ export default async function DashboardPage({
 
       {/* CHART + ACTIVIDAD RECIENTE */}
       <div className="grid gap-4 lg:grid-cols-3">
-
-        {/* Chart */}
         <div className="habitta-card-high p-5 flex flex-col">
           <h2 className="text-sm font-semibold text-[var(--foreground)] mb-4">Distribución de Tickets</h2>
           <StatusBarChart data={chartData} />
         </div>
 
-        {/* Actividad reciente */}
         <div className="habitta-card-high overflow-hidden lg:col-span-2">
           <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
             <h2 className="text-sm font-semibold text-[var(--foreground)]">Actividad Reciente</h2>
@@ -142,8 +138,6 @@ export default async function DashboardPage({
     </div>
   );
 }
-
-/* ── Sub-componentes ─────────────────────────────────────────── */
 
 function KPICard({
   label, value, icon, warn = false,

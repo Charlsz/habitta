@@ -23,11 +23,11 @@ interface Props {
 }
 
 export default async function TicketsPage({ searchParams }: Props) {
-  const params    = await searchParams;
-  const user      = await requireAuth();
-  const orgId     = await getActiveOrganizationId(user.id, params.org);
-  const tickets   = await getTickets(orgId, { status: params.status, asset_id: params.asset });
-  const assets    = await getAssetsByOrganization(orgId);
+  const params  = await searchParams;
+  const user    = await requireAuth();
+  const orgId   = await getActiveOrganizationId(user.id, params.org);
+  const tickets = await getTickets(orgId, { status: params.status, asset_id: params.asset });
+  const assets  = await getAssetsByOrganization(orgId);
 
   const select = 'w-full px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm focus:outline-none focus:ring-1 focus:ring-[#d4a373]';
 
@@ -67,7 +67,7 @@ export default async function TicketsPage({ searchParams }: Props) {
             </select>
           </div>
           <div className="flex-1 min-w-[140px]">
-            <label className="block text-xs font-semibold text-[var(--foreground)]/40 uppercase tracking-wider mb-1">SLA</label>
+            <label className="block text-xs font-semibold text-[var(--foreground)]/40 uppercase tracking-wider mb-1">Tiempo límite</label>
             <select name="sla" defaultValue={params.sla ?? 'all'} className={select}>
               <option value="all">🟠 Todos</option>
               <option value="overdue">🔴 Vencidos</option>

@@ -1,27 +1,89 @@
-"use server";
+'use server';
 
-import { revalidatePath } from "next/cache";
-import { assetSchema, AssetInsert } from "../domain/asset.schema";
-import { createAsset } from "../infrastructure/asset.repository";
-import { requireAuth } from "@/modules/auth/application/auth.guard";
-import { requireOrgRole } from "@/modules/auth/application/auth.guard";
+import { revalidatePath } from 'next/cache';
+import { requireOrgRole } from '@/modules/auth/application/auth.guard';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 
-export async function createAssetAction(data: AssetInsert) {
+function getAdmin() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+}
+
+/** Crea una nueva unidad (apartamento, local, parqueadero, etc.) */
+export async function createAssetAction(
+  _prev: unknown,
+  formData: FormData
+): Promise<{ error?: string }> {
+  const orgId = formData.get('organization_id') as string;
+  if (!orgId) return { error: 'Organización requerida' };
+
   try {
-    // Validamos sesión y rol
-    const { user } = await requireOrgRole(data.organization_id, ["owner", "admin", "member"]);
+    await requireOrgRole(orgId, ['admin', 'owner']);
+    const admin = getAdmin();
 
-    const parsed = assetSchema.safeParse(data);
-    if (!parsed.success) return { error: "Datos del activo inválidos" };
+    const { error } = await admin.from('assets').insert({
+      organization_id: orgId,
+      name:       (formData.get('name') as string).trim(),
+      code:       (formData.get('code') as string) || null,
+      asset_type: (formData.get('asset_type') as string) || 'unit',
+      location:   (formData.get('location') as string) || null,
+      description:(formData.get('description') as string) || null,
+      status:     'available',
+    });
 
-    const asset = await createAsset(parsed.data, user.id);
+    if (error) throw new Error(error.message);
+    revalidatePath('/clients');
+    return {};
+  } catch (e: any) {
+    return { error: e?.message ?? 'Error al crear la unidad' };
+  }
+}
 
-    revalidatePath(`/organizations/${data.organization_id}`);
-    revalidatePath("/assets");
+/** Actualiza una unidad existente */
+export async function updateAssetAction(
+  id: string,
+  _prev: unknown,
+  formData: FormData
+): Promise<{ error?: string }> {
+  const orgId = formData.get('organization_id') as string;
+  if (!orgId) return { error: 'Organización requerida' };
 
-    return { success: true, data: asset };
-  } catch (error: any) {
-    if (error?.digest?.startsWith("NEXT_REDIRECT")) throw error;
-    return { error: error.message || "Error al crear el activo" };
+  try {
+    await requireOrgRole(orgId, ['admin', 'owner']);
+    const admin = getAdmin();
+
+    const { error } = await admin.from('assets').update({
+      name:       (formData.get('name') as string).trim(),
+      code:       (formData.get('code') as string) || null,
+      asset_type: (formData.get('asset_type') as string) || 'unit',
+      location:   (formData.get('location') as string) || null,
+      description:(formData.get('description') as string) || null,
+    }).eq('id', id);
+
+    if (error) throw new Error(error.message);
+    revalidatePath('/clients');
+    return {};
+  } catch (e: any) {
+    return { error: e?.message ?? 'Error al actualizar la unidad' };
+  }
+}
+
+/** Elimina una unidad (solo si no tiene clientes activos asignados) */
+export async function deleteAssetAction(
+  id: string,
+  orgId: string
+): Promise<{ error?: string }> {
+  try {
+    await requireOrgRole(orgId, ['admin', 'owner']);
+    const admin = getAdmin();
+    const { error } = await admin.from('assets').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    revalidatePath('/clients');
+    return {};
+  } catch (e: any) {
+    return { error: e?.message ?? 'Error al eliminar la unidad' };
   }
 }

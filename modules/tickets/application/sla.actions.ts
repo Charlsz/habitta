@@ -1,10 +1,10 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getSLAResult, type SLAResult } from "@/lib/sla";
+import { getDeadlineResult, type DeadlineResult } from "@/lib/sla";
 
-/** Retorna el SLA status para un ticket individual */
-export async function getSLAStatus(ticketId: string): Promise<SLAResult | null> {
+/** Retorna el estado de tiempo límite para un ticket individual */
+export async function getDeadlineStatus(ticketId: string): Promise<DeadlineResult | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("tickets")
@@ -12,19 +12,21 @@ export async function getSLAStatus(ticketId: string): Promise<SLAResult | null> 
     .eq("id", ticketId)
     .single();
   if (!data) return null;
-  return getSLAResult(data.priority, data.created_at, data.status);
+  return getDeadlineResult(data.priority, data.created_at, data.status);
 }
 
-/** Cuenta tickets at_risk + overdue para una org (usa la RPC) */
+/** @deprecated usa getDeadlineStatus */
+export const getSLAStatus = getDeadlineStatus;
+
+/** Cuenta tickets en riesgo + vencidos para una org */
 export async function getAtRiskCount(orgId: string): Promise<number> {
   const supabase = await createClient();
   const { data } = await supabase
     .rpc("get_tickets_by_sla_urgency", { p_organization_id: orgId });
 
   if (!data) return 0;
-  const now = Date.now();
   return (data as any[]).filter((t) => {
-    const sla = getSLAResult(t.priority, t.created_at, t.status);
-    return sla && (sla.status === "at_risk" || sla.status === "overdue");
+    const r = getDeadlineResult(t.priority, t.created_at, t.status);
+    return r && (r.status === "at_risk" || r.status === "overdue");
   }).length;
 }
