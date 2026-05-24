@@ -6,6 +6,7 @@ import {
 } from "@/modules/tickets/infrastructure/ticket.repository";
 import { TicketPriorityBadge, TicketStatusBadge } from "@/modules/tickets/presentation/ticket-badge";
 import { TelegramNotifiedBadge } from "@/modules/tickets/presentation/telegram-notified-badge";
+import { SLABadge } from "@/modules/tickets/components/SLABadge";
 import {
   changeTicketStatusAction,
   addTicketCommentAction,
@@ -19,6 +20,7 @@ import { TelegramReplyForm } from "@/modules/telegram/presentation/telegram-repl
 import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
 import { TicketStatus, TICKET_STATUS_LABELS } from "@/modules/tickets/domain/ticket.schema";
+import { SLA_HOURS } from "@/lib/sla";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -43,6 +45,45 @@ async function getTelegramSession(sessionId: string) {
     .eq("id", sessionId)
     .single();
   return data;
+}
+
+/** Barra de progreso SLA — solo renderiza en server, SLABadge se hidrata en cliente */
+function SLAProgressSection({ priority, createdAt, status }: { priority: string; createdAt: string; status: string }) {
+  if (status === "closed" || status === "resolved") return null;
+  const slaTotalMs  = (SLA_HOURS[priority] ?? 72) * 3_600_000;
+  const elapsed     = Date.now() - new Date(createdAt).getTime();
+  const pct         = Math.min(Math.round((elapsed / slaTotalMs) * 100), 100);
+  const slaStatus   = pct < 75 ? "on_track" : pct < 100 ? "at_risk" : "overdue";
+  const barColor    = slaStatus === "on_track" ? "bg-green-500" : slaStatus === "at_risk" ? "bg-yellow-400" : "bg-red-500";
+  const slaHours    = SLA_HOURS[priority] ?? 72;
+
+  return (
+    <div className="habitta-card p-5 space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-sm text-[var(--foreground)] uppercase tracking-wide">
+          ⏱ SLA ({slaHours}h para prioridad {priority})
+        </h3>
+        <SLABadge priority={priority} createdAt={createdAt} status={status} />
+      </div>
+      <div>
+        <div className="flex justify-between text-xs text-[var(--muted)] mb-1">
+          <span>0%</span>
+          <span className="font-semibold">{pct}% consumido</span>
+          <span>100%</span>
+        </div>
+        <div className="w-full h-3 bg-[var(--border)] rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all ${barColor}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <div className="flex justify-between text-xs text-[var(--muted)] mt-1">
+          <span>Creado: {new Date(createdAt).toLocaleDateString("es-CO", { day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit" })}</span>
+          <span>Vence: {new Date(new Date(createdAt).getTime() + slaTotalMs).toLocaleDateString("es-CO", { day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit" })}</span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default async function TicketDetailPage({
@@ -97,7 +138,6 @@ export default async function TicketDetailPage({
                   Sin asignar
                 </span>
               )}
-              {/* Badge de notificación Telegram por visita programada */}
               <TelegramNotifiedBadge notifiedAt={telegramNotifiedAt} />
             </div>
             <h1 className="text-2xl font-bold habitta-title">{ticket.title}</h1>
@@ -183,6 +223,13 @@ export default async function TicketDetailPage({
         </div>
       </div>
 
+      {/* -------- Barra de progreso SLA -------- */}
+      <SLAProgressSection
+        priority={ticket.priority}
+        createdAt={ticket.created_at}
+        status={ticket.status}
+      />
+
       {/* -------- Responsable -------- */}
       {isAdmin && (
         <div className="habitta-card p-5">
@@ -263,7 +310,7 @@ export default async function TicketDetailPage({
         </div>
       )}
 
-      {/* -------- Responder por Telegram (solo si el ticket vino de Telegram) -------- */}
+      {/* -------- Responder por Telegram -------- */}
       {isAdmin && isTelegramTicket && telegramSession && (
         <TelegramReplyForm
           ticketId={ticket.id}
@@ -272,7 +319,7 @@ export default async function TicketDetailPage({
         />
       )}
 
-      {/* -------- Actualizaciones (comentarios) -------- */}
+      {/* -------- Actualizaciones -------- */}
       <div className="space-y-4">
         <h3 className="font-bold text-lg habitta-title">Actualizaciones</h3>
         <div className="space-y-4">
