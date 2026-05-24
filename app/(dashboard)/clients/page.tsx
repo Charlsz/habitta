@@ -19,8 +19,7 @@ export default async function ClientsPage({ searchParams }: Props) {
   const params = await searchParams;
   const orgId  = await getActiveOrganizationId(user.id, params.org);
 
-  const { role } = await requireOrgRole(orgId, ['owner', 'admin', 'member']);
-  const isAdmin = role === 'owner' || role === 'admin';
+  await requireOrgRole(orgId, ['owner', 'admin', 'member']);
 
   const supabase = await createSupabase();
   const { data: orgData } = await supabase
@@ -89,17 +88,7 @@ export default async function ClientsPage({ searchParams }: Props) {
       {/* Bot link */}
       <TelegramLinkButton organizationId={orgId} organizationName={orgName} />
 
-      {/* ── ACTIVOS / UNIDADES ─────────────────────────────────────────── */}
-      {/*
-        ¿Qué es un "activo"?
-        En Habitta, un activo es cualquier espacio físico que pertenece
-        a tu propiedad: un apartamento, un parqueadero, una bodega, un local
-        comercial o un área común. Piénsalo como la "ficha" de cada inmueble.
-        Una vez creado el activo, puedes:
-          · Asignarlo a un cliente (quién vive o usa ese espacio)
-          · Vincularlo a tickets (si hay un daño o solicitud en ese lugar)
-          · Usarlo en citas de mantenimiento
-      */}
+      {/* ── ACTIVOS / UNIDADES ────────────────────────────────────────── */}
       <section className="habitta-card p-5 space-y-1">
         <div className="mb-2">
           <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
@@ -126,9 +115,8 @@ export default async function ClientsPage({ searchParams }: Props) {
         />
       </section>
 
-      {/* ── CLIENTES ───────────────────────────────────────────────────── */}
+      {/* ── CLIENTES ─────────────────────────────────────────────────── */}
       <section className="space-y-4">
-        {/* KPI chips */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { label: 'Total',      value: counts.total,   color: 'var(--foreground)' },
@@ -143,7 +131,6 @@ export default async function ClientsPage({ searchParams }: Props) {
           ))}
         </div>
 
-        {/* Filtros de estado */}
         <div className="flex flex-wrap gap-2">
           {[
             { label: 'Todos',      value: undefined,  count: counts.total    },
@@ -168,7 +155,6 @@ export default async function ClientsPage({ searchParams }: Props) {
           })}
         </div>
 
-        {/* Buscador */}
         <form method="GET" className="relative">
           <input type="hidden" name="org" value={orgId} />
           {status && <input type="hidden" name="status" value={status} />}
@@ -181,7 +167,6 @@ export default async function ClientsPage({ searchParams }: Props) {
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)] pointer-events-none">🔍</span>
         </form>
 
-        {/* Lista */}
         {filtered.length === 0 ? (
           <div className="text-center py-20 space-y-3">
             <p className="text-5xl">👥</p>
