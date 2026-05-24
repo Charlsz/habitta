@@ -71,13 +71,13 @@ export function SidebarNav({ orgs, logoutAction }: Props) {
       {/* ── Logo ────────────────────────────────────────── */}
       <Link
         href="/organizations"
-        className="flex items-center px-5 py-5 shrink-0 hover:opacity-80 transition-opacity"
+        className="flex items-center px-4 py-4 shrink-0 hover:opacity-80 transition-opacity"
       >
         <Image
           src="/habitta_icon.png"
           alt="Habitta"
-          width={120}
-          height={40}
+          width={84}
+          height={28}
           className="object-contain"
           priority
         />

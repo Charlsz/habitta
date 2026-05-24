@@ -1,6 +1,5 @@
 import { logoutAction } from "@/modules/auth/application/auth.actions";
 import { requireAuth } from "@/modules/auth/application/auth.guard";
-import Link from "next/link";
 import { ReactNode, Suspense } from "react";
 import { NotificationBell } from "@/modules/notifications/presentation/notification-bell";
 import {
@@ -53,17 +52,6 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         className="w-56 shrink-0 flex flex-col"
         style={{ background: "var(--sidebar-bg)", borderRight: "1px solid var(--border)" }}
       >
-        {/* Logo */}
-        <div className="h-16 flex items-center px-5 shrink-0">
-          <Link
-            href="/organizations"
-            className="font-bold text-[1.35rem] tracking-tight text-[var(--foreground)] hover:opacity-75 transition-opacity"
-            style={{ fontFamily: "var(--font-playfair, serif)" }}
-          >
-            Habitta
-          </Link>
-        </div>
-
         {/* Nav reactivo */}
         <Suspense fallback={null}>
           <SidebarNav orgs={orgs} logoutAction={logoutAction} />

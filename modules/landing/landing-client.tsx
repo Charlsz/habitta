@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Ticket, Calendar, Building, LayoutDashboard,
   Users, Paperclip, Menu, X
@@ -43,8 +44,15 @@ export default function LandingClient({ isLoggedIn, displayName, initials }: Pro
         <div className="mx-auto max-w-6xl px-6">
           <div className="flex h-16 items-center justify-between">
 
-            <Link href="/" style={{ fontFamily: "var(--font-playfair), serif", fontSize: "1.5rem", fontWeight: 700, color: "#2C2416", textDecoration: "none" }}>
-              Habitta
+            <Link href="/" className="inline-flex items-center hover:opacity-85 transition-opacity" aria-label="Ir al inicio de Habitta">
+              <Image
+                src="/habitta_icon.png"
+                alt="Habitta"
+                width={96}
+                height={32}
+                priority
+                className="block object-contain"
+              />
             </Link>
 
             <nav className="hidden md:flex items-center gap-8">
