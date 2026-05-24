@@ -6,6 +6,7 @@ import { getClientById } from '@/modules/clients/infrastructure/client.repositor
 import { ClientStatusBadge, ClientRelationBadge } from '@/modules/clients/components/ClientBadge';
 import { createClient as createSupabase } from '@/lib/supabase/server';
 import { ClientChat } from '@/modules/clients/components/ClientChat';
+import { DeactivateClientButton } from '@/modules/clients/components/DeactivateClientButton';
 
 interface Props {
   params:       Promise<{ id: string }>;
@@ -100,6 +101,7 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
       {/* Ficha principal */}
       <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-6">
         <div className="flex items-start gap-4">
+          {/* Avatar */}
           <div
             className="w-14 h-14 rounded-full flex items-center justify-center text-lg font-bold text-white shrink-0"
             style={{ backgroundColor: '#d4a373' }}
@@ -107,6 +109,7 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
             {initials}
           </div>
 
+          {/* Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl font-semibold text-[var(--foreground)]">{client.full_name}</h1>
@@ -120,7 +123,15 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
               {client.email && <a href={`mailto:${client.email}`} className="hover:text-[#d4a373] transition-colors">✉ {client.email}</a>}
               {client.phone && <a href={`tel:${client.phone}`}    className="hover:text-[#d4a373] transition-colors">📞 {client.phone}</a>}
               {client.move_in_date && (
-                <span>📅 Desde {new Date(client.move_in_date).toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                <span>
+                  📅 Desde {new Date(client.move_in_date).toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' })}
+                </span>
+              )}
+              {/* Fecha de salida — solo lectura, aparece si el cliente está inactivo */}
+              {client.move_out_date && (
+                <span className="text-red-400">
+                  📅 Hasta {new Date(client.move_out_date).toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' })}
+                </span>
               )}
             </div>
             {client.document_number && (
@@ -130,7 +141,14 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
             )}
           </div>
 
-          <div className="flex gap-2 shrink-0">
+          {/* Acciones */}
+          <div className="flex gap-2 shrink-0 flex-wrap justify-end">
+            <DeactivateClientButton
+              clientId={id}
+              clientName={client.full_name}
+              orgId={orgId}
+              isInactive={client.status === 'inactive'}
+            />
             <Link
               href={`/clients/${id}/edit?org=${orgId}`}
               className="px-3 py-1.5 rounded-lg text-sm border border-[var(--border)] hover:border-[#d4a373] transition-colors"
@@ -205,7 +223,7 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
         )}
       </section>
 
-      {/* Visitas / Agenda */}
+      {/* Visitas */}
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-[var(--foreground)]">
@@ -234,7 +252,7 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
         )}
       </section>
 
-      {/* Chat Telegram — solo si el cliente tiene sesión */}
+      {/* Chat Telegram */}
       {sessionId && chat?.telegram_chat_id && (
         <section className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-6">
           <h2 className="font-semibold text-[var(--foreground)] mb-4">
