@@ -5,6 +5,7 @@ export type AuditAction =
   | "created"
   | "updated"
   | "status_changed"
+  | "priority_changed"
   | "assigned"
   | "commented"
   | "responded"
