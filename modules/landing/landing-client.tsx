@@ -228,7 +228,7 @@ export default function LandingClient({ isLoggedIn, displayName, initials }: Pro
 
         {/* ── HERO ── */}
         <section style={{ position: "relative", padding: "5rem 1.5rem 6rem", overflow: "hidden" }}>
-          <div aria-hidden="true" style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(254,250,224,0.72), rgba(254,250,224,0.78)), url('/background.jpg')", backgroundPosition: "center", backgroundSize: "cover", backgroundRepeat: "no-repeat", opacity: 1, zIndex: 0 }} />
+          <div aria-hidden="true" style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(254,250,224,0.42), rgba(254,250,224,0.48)), url('/background.jpg')", backgroundPosition: "center", backgroundSize: "cover", backgroundRepeat: "no-repeat", opacity: 1, zIndex: 0 }} />
           <div className="mx-auto max-w-4xl text-center" style={{ position: "relative", zIndex: 1 }}>
 
             <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", backgroundColor: "#faedcd", border: "1px solid #E8DECE", borderRadius: "999px", padding: "0.25rem 0.875rem", fontSize: "0.8125rem", fontWeight: 600, color: "#7A6A52", marginBottom: "2rem" }}>
