@@ -23,7 +23,12 @@ export type AIAnswerResponse = {
   content: string;
 };
 
-export type AIResponse = AIActionResponse | AIAnswerResponse;
+export type AINavigateDocumentsResponse = {
+  type: "navigate_documents";
+  instruction: string;
+};
+
+export type AIResponse = AIActionResponse | AIAnswerResponse | AINavigateDocumentsResponse;
 
 // ─── getOrganizationAIContext ──────────────────────────────────────────────────────────
 export async function getOrganizationAIContext(orgId?: string) {
@@ -225,6 +230,19 @@ INSERT residents (NO incluyas organization_id, se inyecta solo):
 INSERT tickets : title*, type, priority, status (siempre "open"), description
 INSERT assets  : name*, code, type, status
 
+═══ CUÁNDO USAR navigate_documents ═══
+
+Si el admin pide generar un documento, reporte, PDF o carta sobre un residente, evento o activo,
+responde con este formato (NO con "action" ni "answer"):
+{
+  "type": "navigate_documents",
+  "instruction": "<descripción clara del documento que quiere el admin, en español, incluyendo el nombre del sujeto si lo mencionó>"
+}
+Ejemplos de instruction:
+- "Genera un PDF con los datos del residente Carlos Galvis"
+- "Crea un reporte del evento Reunión de copropietarios"
+- "Genera una carta de bienvenida para el residente Juan Pérez del Apto 301"
+
 ═══ DATOS ACTUALES DE LA ORG ═══
 
 📋 TICKETS (${context?.counts.total} total)
@@ -249,6 +267,8 @@ ${broadcastLines || "Sin broadcasts enviados."}
 Siempre responde JSON puro (sin bloques de código, sin texto extra).
 
 Respuesta informativa: {"type":"answer","content":"texto"}
+
+Navegar a documentos: {"type":"navigate_documents","instruction":"..."}
 
 Acción (pide confirmación, no ejecutes sin que el admin confirme):
 {
