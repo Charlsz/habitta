@@ -2,7 +2,6 @@ import { logoutAction } from "@/modules/auth/application/auth.actions";
 import { requireAuth } from "@/modules/auth/application/auth.guard";
 import Link from "next/link";
 import { ReactNode, Suspense } from "react";
-import { Button } from "@/modules/core/components";
 import { NotificationBell } from "@/modules/notifications/presentation/notification-bell";
 import {
   getUnreadNotifications,
@@ -43,39 +42,48 @@ export default async function DashboardLayout({ children }: { children: ReactNod
 
   const [notifications, unreadCount] = await Promise.all([
     getUnreadNotifications(5).catch(() => []),
-    getUnreadCount().catch(()  => 0),
+    getUnreadCount().catch(()   => 0),
   ]);
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-[var(--background)] text-[var(--foreground)]">
+    <div className="flex h-screen w-full overflow-hidden">
 
-      {/* ── Sidebar ── */}
-      <aside className="w-[220px] shrink-0 bg-[var(--sidebar-bg)] border-r border-[var(--border)] flex flex-col">
+      {/* ════ Sidebar ════ */}
+      <aside
+        className="w-56 shrink-0 flex flex-col"
+        style={{ background: "var(--sidebar-bg)", borderRight: "1px solid var(--border)" }}
+      >
         {/* Logo */}
         <div className="h-16 flex items-center px-5 shrink-0">
-          <Link href="/organizations">
-            <span
-              className="font-serif font-bold text-2xl tracking-tight text-[var(--foreground)] hover:opacity-80 transition-opacity"
-              style={{ fontFamily: "var(--font-playfair), serif" }}
-            >
-              Habitta
-            </span>
+          <Link
+            href="/organizations"
+            className="font-bold text-[1.35rem] tracking-tight text-[var(--foreground)] hover:opacity-75 transition-opacity"
+            style={{ fontFamily: "var(--font-playfair, serif)" }}
+          >
+            Habitta
           </Link>
         </div>
 
-        {/* Nav — client component para leer pathname/searchParams */}
-        <SidebarNav orgs={orgs} logoutAction={logoutAction} />
+        {/* Nav reactivo */}
+        <Suspense fallback={null}>
+          <SidebarNav orgs={orgs} logoutAction={logoutAction} />
+        </Suspense>
       </aside>
 
-      {/* ── Contenido principal ── */}
+      {/* ════ Main area ════ */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-16 shrink-0 bg-[var(--background)] border-b border-[var(--border)] flex items-center px-6 justify-end gap-3">
+
+        {/* Topbar */}
+        <header
+          className="h-16 shrink-0 flex items-center px-6 justify-end gap-4"
+          style={{ borderBottom: "1px solid var(--border)", background: "var(--background)" }}
+        >
           <NotificationBell unreadCount={unreadCount} notifications={notifications} />
-          <span className="text-sm font-medium text-[var(--muted)] hidden sm:block">
+          <span className="text-sm font-medium text-[var(--foreground)]/60 hidden sm:block">
             {displayName}
           </span>
           <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 select-none"
             style={{ backgroundColor: "#d4a373" }}
             title={user.email}
           >
@@ -83,7 +91,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           </div>
         </header>
 
-        {/* main SIN padding propio — cada página define su propio p-6/p-8 */}
+        {/* Page content — cada página define su propio padding */}
         <main className="flex-1 overflow-auto">
           {children}
         </main>

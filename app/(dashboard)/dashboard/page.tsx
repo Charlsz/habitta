@@ -8,13 +8,8 @@ import {
 } from "@/modules/tickets/presentation/ticket-badge";
 import { StatusBarChart } from "@/modules/dashboard/presentation/dashboard-chart";
 import {
-  Ticket,
-  AlertCircle,
-  CheckCircle2,
-  CalendarClock,
-  UserX,
-  Building2,
-  ShieldAlert,
+  Ticket, AlertCircle, CheckCircle2,
+  CalendarClock, UserX, Building2, ShieldAlert,
 } from "lucide-react";
 import Link from "next/link";
 import { TicketStatus } from "@/modules/tickets/domain/ticket.schema";
@@ -24,30 +19,21 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ org?: string }>;
 }) {
-  const { org: requestedOrgId } = await searchParams;
+  const { org: orgId } = await searchParams;
+
+  // Guard: si no hay ?org= válido, volver a Organizaciones
+  if (!orgId) redirect("/organizations");
+
   const user = await requireAuth();
   const orgs = await getOrganizations(user.id);
-
-  // Sin org seleccionada → siempre ir a Organizaciones
-  if (!requestedOrgId) {
-    redirect("/organizations");
-  }
-
-  // Org solicitada no existe o no pertenece al usuario
-  const currentOrg = orgs.find((org) => org.id === requestedOrgId);
-  if (!currentOrg) {
-    redirect("/organizations");
-  }
-
-  if (orgs.length === 0) {
-    redirect("/organizations");
-  }
+  const currentOrg = orgs.find((o) => o.id === orgId);
+  if (!currentOrg) redirect("/organizations");
 
   const metrics = await getDashboardMetrics(currentOrg.id);
 
   const chartData = [
-    { name: "Abiertos",     count: metrics.openTickets,     color: "#3b82f6" },
-    { name: "Resueltos",    count: metrics.resolvedTickets,  color: "#10b981" },
+    { name: "Abiertos",       count: metrics.openTickets,     color: "#3b82f6" },
+    { name: "Resueltos",      count: metrics.resolvedTickets,  color: "#10b981" },
     {
       name: "Pdt. Atención",
       count: metrics.totalTickets - metrics.openTickets - metrics.resolvedTickets,
@@ -56,195 +42,174 @@ export default async function DashboardPage({
   ];
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-6 lg:p-8 space-y-6 max-w-[1400px] mx-auto">
 
       {/* HEADER */}
       <div>
-        <h1 className="habitta-title text-2xl lg:text-3xl">Panel General</h1>
-        <p className="habitta-muted text-sm mt-1">
-          Resumen operativo para <strong>{currentOrg.name}</strong>
+        <h1 className="text-2xl font-bold tracking-tight text-[var(--foreground)]">
+          Panel General
+        </h1>
+        <p className="text-sm text-[var(--foreground)]/60 mt-0.5">
+          Resumen operativo para <strong className="text-[var(--foreground)]/80">{currentOrg.name}</strong>
         </p>
       </div>
 
-      {/* KPI CARDS */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-6">
-        <KPIBox
-          title="Total Tickets"
-          value={metrics.totalTickets}
-          icon={<Ticket className="w-5 h-5 text-[var(--muted)]" />}
-        />
-        <KPIBox
-          title="Abiertos"
-          value={metrics.openTickets}
-          icon={<AlertCircle className="w-5 h-5 text-[var(--accent)]" />}
-        />
-        <KPIBox
-          title="Resueltos"
-          value={metrics.resolvedTickets}
-          icon={<CheckCircle2 className="w-5 h-5 text-green-500" />}
-        />
-        <KPIBox
-          title="Eventos Pendientes"
-          value={metrics.pendingEvents}
-          icon={<CalendarClock className="w-5 h-5 text-yellow-500" />}
-        />
-        <KPIBox
-          title="Sin Asignar"
-          value={metrics.unassignedTickets}
-          icon={<UserX className="w-5 h-5 text-red-400" />}
-          highlight={metrics.unassignedTickets > 0}
-        />
+      {/* KPI GRID */}
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+        <KPICard label="Total Tickets"     value={metrics.totalTickets}     icon={<Ticket        className="w-4 h-4" />} />
+        <KPICard label="Abiertos"          value={metrics.openTickets}      icon={<AlertCircle   className="w-4 h-4" />} />
+        <KPICard label="Resueltos"         value={metrics.resolvedTickets}  icon={<CheckCircle2  className="w-4 h-4 text-emerald-500" />} />
+        <KPICard label="Eventos Pend."     value={metrics.pendingEvents}    icon={<CalendarClock className="w-4 h-4 text-amber-500" />} />
+        <KPICard label="Sin Asignar"       value={metrics.unassignedTickets}icon={<UserX         className="w-4 h-4 text-red-400" />}
+          warn={metrics.unassignedTickets > 0} />
         <Link
           href={`/tickets?org=${currentOrg.id}&sla=at_risk`}
-          className={`habitta-card p-5 flex flex-col justify-between transition-all hover:ring-2 hover:ring-offset-1 ${
-            metrics.atRiskCount > 0
-              ? "ring-2 ring-red-300 ring-offset-1 hover:ring-red-400"
-              : "hover:ring-[#d4a373]"
-          }`}
+          className={[
+            "habitta-card p-4 flex flex-col gap-3 transition-all hover:shadow-md",
+            metrics.atRiskCount > 0 ? "ring-2 ring-red-300" : "",
+          ].join(" ")}
         >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-sm text-[var(--muted)]">En riesgo SLA</h3>
-            <div className="p-2 bg-[rgba(255,255,255,0.55)] rounded-md">
-              <ShieldAlert className={`w-5 h-5 ${metrics.atRiskCount > 0 ? "text-red-500" : "text-[var(--muted)]"}`} />
-            </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-[var(--foreground)]/50">En riesgo SLA</span>
+            <ShieldAlert className={`w-4 h-4 ${metrics.atRiskCount > 0 ? "text-red-400" : "text-[var(--foreground)]/30"}`} />
           </div>
-          <p className={`habitta-title text-3xl ${metrics.atRiskCount > 0 ? "text-red-500" : ""}`}>
+          <p className={`text-3xl font-bold ${metrics.atRiskCount > 0 ? "text-red-500" : "text-[var(--foreground)]"}`}>
             {metrics.atRiskCount}
           </p>
-          <p className="text-xs text-[var(--muted)] mt-1">Ver tickets →</p>
+          <p className="text-xs text-[var(--foreground)]/40">Ver tickets →</p>
         </Link>
       </div>
 
-      {/* CHARTS + ACTIVIDAD */}
-      <div className="grid gap-6 lg:grid-cols-3 items-start">
-        <div className="habitta-card-high lg:col-span-1 p-6 flex flex-col">
-          <h3 className="font-bold text-[var(--foreground)] border-b border-[var(--border)] pb-3 mb-4">
-            Distribución de Tickets
-          </h3>
+      {/* CHART + ACTIVIDAD RECIENTE */}
+      <div className="grid gap-4 lg:grid-cols-3">
+
+        {/* Chart */}
+        <div className="habitta-card-high p-5 flex flex-col">
+          <h2 className="text-sm font-semibold text-[var(--foreground)] mb-4">Distribución de Tickets</h2>
           <StatusBarChart data={chartData} />
         </div>
 
-        <div className="habitta-card-high lg:col-span-2 overflow-hidden">
-          <div className="p-4 border-b border-[var(--border)] bg-[var(--surface)] flex justify-between items-center">
-            <h3 className="font-bold text-[var(--foreground)]">Actividad Reciente</h3>
-            <Link href={`/tickets?org=${currentOrg.id}`} className="habitta-link text-xs">
+        {/* Actividad reciente */}
+        <div className="habitta-card-high overflow-hidden lg:col-span-2">
+          <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-[var(--foreground)]">Actividad Reciente</h2>
+            <Link href={`/tickets?org=${currentOrg.id}`} className="text-xs text-[var(--foreground)]/50 hover:text-[var(--foreground)] transition-colors">
               Ver todos →
             </Link>
           </div>
-          <div className="divide-y divide-[var(--border)]">
-            {metrics.recentTickets.length === 0 ? (
-              <div className="p-8 text-center habitta-muted text-sm">
-                No hay tickets registrados aún.
-              </div>
-            ) : (
-              metrics.recentTickets.map((ticket: any) => (
-                <Link
-                  key={ticket.id}
-                  href={`/tickets/${ticket.id}?org=${currentOrg.id}`}
-                  className="block p-4 hover:bg-[var(--surface)] transition-colors"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div className="space-y-1">
-                      <p className="font-medium text-sm text-[var(--foreground)] line-clamp-1">
-                        {ticket.title}
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs text-[var(--muted)]">
-                          {new Date(ticket.created_at).toLocaleDateString("es-ES", {
+
+          {metrics.recentTickets.length === 0 ? (
+            <div className="p-8 text-center text-sm text-[var(--foreground)]/40">
+              No hay tickets registrados aún.
+            </div>
+          ) : (
+            <ul className="divide-y divide-[var(--border)]">
+              {metrics.recentTickets.map((t: any) => (
+                <li key={t.id}>
+                  <Link
+                    href={`/tickets/${t.id}?org=${currentOrg.id}`}
+                    className="flex items-center justify-between gap-4 px-5 py-3.5 hover:bg-[var(--surface)] transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-[var(--foreground)] truncate">{t.title}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-[var(--foreground)]/40">
+                          {new Date(t.created_at).toLocaleDateString("es-ES", {
                             day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
                           })}
-                        </p>
-                        {!ticket.assigned_to && (
-                          <span className="text-xs bg-red-50 text-red-500 font-medium px-1.5 py-0.5 rounded">
+                        </span>
+                        {!t.assigned_to && (
+                          <span className="text-[10px] font-semibold bg-red-50 text-red-400 px-1.5 py-0.5 rounded-md">
                             Sin asignar
                           </span>
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 self-start sm:self-auto">
-                      <TicketPriorityBadge priority={ticket.priority as any} />
-                      <TicketStatusBadge status={ticket.status as TicketStatus} />
+                    <div className="flex items-center gap-2 shrink-0">
+                      <TicketPriorityBadge priority={t.priority as any} />
+                      <TicketStatusBadge   status={t.status as TicketStatus} />
                     </div>
-                  </div>
-                </Link>
-              ))
-            )}
-          </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
 
       {/* TOP UNIDADES */}
-      <TopAssetsByTickets items={metrics.topAssetsByTickets} orgId={currentOrg.id} />
+      <TopAssets items={metrics.topAssetsByTickets} orgId={currentOrg.id} />
     </div>
   );
 }
 
-/* ------------------------------------------------------------------ */
+/* ── Sub-componentes ─────────────────────────────────────────── */
 
-function KPIBox({
-  title, value, icon, highlight = false,
+function KPICard({
+  label, value, icon, warn = false,
 }: {
-  title: string; value: number; icon: React.ReactNode; highlight?: boolean;
+  label: string; value: number; icon: React.ReactNode; warn?: boolean;
 }) {
   return (
-    <div className={`habitta-card p-5 flex flex-col justify-between ${
-      highlight ? "ring-2 ring-red-300 ring-offset-1" : ""
+    <div className={`habitta-card p-4 flex flex-col gap-3 ${
+      warn ? "ring-2 ring-red-300" : ""
     }`}>
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-sm text-[var(--muted)]">{title}</h3>
-        <div className="p-2 bg-[rgba(255,255,255,0.55)] rounded-md">{icon}</div>
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-[var(--foreground)]/50">{label}</span>
+        <span className="text-[var(--foreground)]/40">{icon}</span>
       </div>
-      <p className={`habitta-title text-3xl ${highlight ? "text-red-500" : ""}`}>{value}</p>
+      <p className={`text-3xl font-bold ${warn ? "text-red-500" : "text-[var(--foreground)]"}`}>
+        {value}
+      </p>
     </div>
   );
 }
 
-function TopAssetsByTickets({
+function TopAssets({
   items, orgId,
 }: {
   items: { asset_name: string; ticket_count: number }[];
   orgId: string;
 }) {
   const filtered = items.filter((i) => i.ticket_count > 0);
-  const max = filtered.length > 0 ? filtered[0].ticket_count : 1;
+  const max = filtered[0]?.ticket_count ?? 1;
 
   return (
     <div className="habitta-card-high overflow-hidden">
-      <div className="p-4 border-b border-[var(--border)] bg-[var(--surface)] flex items-center gap-2">
-        <Building2 className="w-4 h-4 text-[var(--muted)]" />
-        <h3 className="font-bold text-[var(--foreground)]">Unidades con más incidencias</h3>
+      <div className="px-5 py-4 border-b border-[var(--border)] flex items-center gap-2">
+        <Building2 className="w-4 h-4 text-[var(--foreground)]/40" />
+        <h2 className="text-sm font-semibold text-[var(--foreground)]">Unidades con más incidencias</h2>
       </div>
+
       {filtered.length === 0 ? (
-        <div className="p-8 text-center habitta-muted text-sm">
+        <p className="p-8 text-center text-sm text-[var(--foreground)]/40">
           Ninguna unidad tiene solicitudes registradas aún.
-        </div>
+        </p>
       ) : (
         <ul className="divide-y divide-[var(--border)]">
           {filtered.map((item, idx) => {
-            const barWidth = Math.round((item.ticket_count / max) * 100);
-            const isTop    = idx === 0;
+            const pct   = Math.round((item.ticket_count / max) * 100);
+            const isTop = idx === 0;
             return (
               <li key={item.asset_name} className="flex items-center gap-4 px-5 py-3">
                 <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold shrink-0 ${
-                  isTop ? "bg-[#d4a373] text-white" : "bg-[var(--surface)] text-[var(--muted)]"
+                  isTop ? "bg-[#d4a373] text-white" : "bg-[var(--surface)] text-[var(--foreground)]/40"
                 }`}>
                   {idx + 1}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[var(--foreground)] truncate">{item.asset_name}</p>
-                  <div className="mt-1 h-1.5 w-full bg-[var(--border)] rounded-full overflow-hidden">
+                  <p className="text-sm font-medium truncate">{item.asset_name}</p>
+                  <div className="mt-1 h-1 w-full bg-[var(--border)] rounded-full overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all ${
-                        isTop ? "bg-[#d4a373]" : "bg-[var(--muted)]/40"
-                      }`}
-                      style={{ width: `${barWidth}%` }}
+                      className={`h-full rounded-full ${isTop ? "bg-[#d4a373]" : "bg-[var(--foreground)]/20"}`}
+                      style={{ width: `${pct}%` }}
                     />
                   </div>
                 </div>
-                <span className={`shrink-0 px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                  isTop ? "bg-[#d4a373]/15 text-[#c8935f]" : "bg-[var(--surface)] text-[var(--muted)]"
+                <span className={`shrink-0 text-xs font-semibold px-2.5 py-0.5 rounded-full ${
+                  isTop ? "bg-[#d4a373]/15 text-[#c8935f]" : "bg-[var(--surface)] text-[var(--foreground)]/40"
                 }`}>
-                  {item.ticket_count} solicitud{item.ticket_count !== 1 ? "es" : ""}
+                  {item.ticket_count} sol.
                 </span>
               </li>
             );
