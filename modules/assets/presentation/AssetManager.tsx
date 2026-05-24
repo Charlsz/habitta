@@ -1,27 +1,29 @@
 'use client';
 
-import { useState, useTransition, useRef } from 'react';
-import { updateAssetAction, deleteAssetAction } from '../application/asset.actions';
-import { createAssetAction } from '../application/asset.actions';
+import { useState, useTransition } from 'react';
+import { updateAssetAction, deleteAssetAction, createAssetAction } from '../application/asset.actions';
+import { ASSET_TYPE_LABELS, type AssetType } from '../domain/asset.schema';
 import type { AssetInsert } from '../domain/asset.schema';
 
 interface Asset {
   id:          string;
   name:        string;
   code:        string | null;
-  asset_type:  string;
+  asset_type:  AssetType;
   location:    string | null;
   description: string | null;
   status:      string;
 }
 
-const ASSET_TYPE_LABELS: Record<string, string> = {
-  unit:        '🏠 Apartamento / Unidad',
-  parking:     '🚗 Parqueadero',
-  storage:     '📦 Bodega',
-  commercial:  '🏪 Local comercial',
-  common_area: '🌿 Área común',
-  other:       '📌 Otro',
+const ASSET_TYPE_ICONS: Record<AssetType, string> = {
+  apartment:   '🏠',
+  house:       '🏡',
+  parking:     '🚗',
+  common_area: '🌿',
+  office:      '🏢',
+  warehouse:   '📦',
+  land:        '🌱',
+  other:       '📌',
 };
 
 const FIELD = 'w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm focus:outline-none focus:ring-1 focus:ring-[#d4a373]';
@@ -39,52 +41,48 @@ function AssetForm({
   onSaved: (saved: Asset) => void;
 }) {
   const isEdit = !!asset;
-  const [error, setError]       = useState<string | null>(null);
-  const [isPending, startTx]    = useTransition();
-  const formRef                  = useRef<HTMLFormElement>(null);
+  const [error, setError]    = useState<string | null>(null);
+  const [isPending, startTx] = useTransition();
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const fd   = new FormData(e.currentTarget);
-    const name = (fd.get('name') as string).trim();
+    const fd        = new FormData(e.currentTarget);
+    const name      = (fd.get('name') as string).trim();
+    const assetType = (fd.get('asset_type') as AssetType) || 'other';
+    const code      = (fd.get('code') as string) || null;
+    const location  = (fd.get('location') as string) || null;
+    const desc      = (fd.get('description') as string) || null;
+
     if (!name) { setError('El nombre es obligatorio'); return; }
     setError(null);
 
     startTx(async () => {
       if (isEdit) {
         const res = await updateAssetAction(asset!.id, organizationId, {
-          name,
-          code:        (fd.get('code') as string) || null,
-          asset_type:  (fd.get('asset_type') as string) || 'unit',
-          location:    (fd.get('location') as string) || null,
-          description: (fd.get('description') as string) || null,
+          name, code, asset_type: assetType, location, description: desc,
         });
         if (res?.error) { setError(res.error); return; }
-        onSaved({ ...asset!, name, code: (fd.get('code') as string) || null,
-          asset_type: (fd.get('asset_type') as string) || 'unit',
-          location: (fd.get('location') as string) || null,
-          description: (fd.get('description') as string) || null });
+        onSaved({ ...asset!, name, code, asset_type: assetType, location, description: desc });
       } else {
         const data: AssetInsert = {
           organization_id: organizationId,
           name,
-          code:        (fd.get('code') as string) || `ACT-${Date.now()}`,
-          asset_type:  (fd.get('asset_type') as string) || 'unit',
-          location:    (fd.get('location') as string) || null,
-          description: (fd.get('description') as string) || null,
+          code:        code ?? `ACT-${Date.now()}`,
+          asset_type:  assetType,
+          location,
+          description: desc,
           status:      'active',
         };
         const res = await createAssetAction(data);
         if (res?.error) { setError(res.error); return; }
-        // El servidor revalida; cerramos el form y el padre recarga
-        onSaved({ id: '', ...data, code: data.code ?? null, location: data.location ?? null, description: data.description ?? null, status: 'active' });
+        onSaved({ id: '', ...data, code: data.code ?? null, location: data.location ?? null, description: data.description ?? null, status: 'active', asset_type: assetType });
       }
       onClose();
     });
   };
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit}
+    <form onSubmit={handleSubmit}
       className="space-y-4 p-4 bg-[var(--surface)] rounded-xl border border-[var(--border)]">
 
       {error && (
@@ -111,9 +109,9 @@ function AssetForm({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className={LABEL}>Tipo</label>
-          <select name="asset_type" defaultValue={asset?.asset_type ?? 'unit'} className={FIELD}>
-            {Object.entries(ASSET_TYPE_LABELS).map(([v, l]) => (
-              <option key={v} value={v}>{l}</option>
+          <select name="asset_type" defaultValue={asset?.asset_type ?? 'other'} className={FIELD}>
+            {(Object.entries(ASSET_TYPE_LABELS) as [AssetType, string][]).map(([v, l]) => (
+              <option key={v} value={v}>{ASSET_TYPE_ICONS[v]} {l}</option>
             ))}
           </select>
         </div>
@@ -173,7 +171,6 @@ export function AssetManager({
         next[idx] = saved;
         return next;
       }
-      // nueva unidad: recarga natural por revalidatePath, igual se muestra al inicio
       return prev;
     });
   };
@@ -218,13 +215,7 @@ export function AssetManager({
           {assets.map((a) => (
             <div key={a.id}
               className="flex items-center gap-3 px-4 py-3 bg-[var(--background)] hover:bg-[var(--surface)] transition-colors">
-              <span className="text-base shrink-0">
-                {a.asset_type === 'unit'        ? '🏠' :
-                 a.asset_type === 'parking'     ? '🚗' :
-                 a.asset_type === 'storage'     ? '📦' :
-                 a.asset_type === 'commercial'  ? '🏪' :
-                 a.asset_type === 'common_area' ? '🌿' : '📌'}
-              </span>
+              <span className="text-base shrink-0">{ASSET_TYPE_ICONS[a.asset_type] ?? '📌'}</span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">
                   {a.name}{a.code ? ` (${a.code})` : ''}
