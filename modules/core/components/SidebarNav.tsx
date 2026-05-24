@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import Link from 'next/link';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 interface Org {
   id:   string;
@@ -15,21 +15,15 @@ interface Props {
   logoutAction: () => Promise<void>;
 }
 
-// Nav items que aparecen cuando hay una org activa
-// Unidades vive dentro de la ficha del cliente — no necesita entrada propia en el sidebar
 const NAV_ITEMS = (orgId: string) => [
-  { href: `/dashboard?org=${orgId}`,               label: "Dashboard",  dot: "#d4a373" },
-  { href: `/clients?org=${orgId}`,                 label: "Clientes",   dot: "#f472b6" },
-  { href: `/tickets?org=${orgId}`,                 label: "Tickets",    dot: "#E07B54" },
-  { href: `/scheduling?org=${orgId}`,              label: "Agenda",     dot: "#9B8BB4" },
-  { href: `/notifications/broadcast?org=${orgId}`, label: "Broadcast",  dot: "#34d399" },
+  { href: `/dashboard?org=${orgId}`,               label: 'Dashboard',   dot: '#d4a373' },
+  { href: `/clients?org=${orgId}`,                 label: 'Clientes',    dot: '#f472b6' },
+  { href: `/tickets?org=${orgId}`,                 label: 'Tickets',     dot: '#E07B54' },
+  { href: `/scheduling?org=${orgId}`,              label: 'Agenda',      dot: '#9B8BB4' },
+  { href: `/notifications/broadcast?org=${orgId}`, label: 'Broadcast',   dot: '#34d399' },
+  { href: `/documents?org=${orgId}`,               label: 'Documentos',  dot: '#60a5fa' },
 ];
 
-/**
- * Detecta la org activa desde:
- * 1. ?org= en la query string
- * 2. /organizations/[id] en el pathname
- */
 function resolveActiveOrg(orgs: Org[], pathname: string, paramOrgId: string | null): Org | null {
   if (paramOrgId) {
     const found = orgs.find((o) => o.id === paramOrgId);
@@ -46,36 +40,34 @@ function resolveActiveOrg(orgs: Org[], pathname: string, paramOrgId: string | nu
 export function SidebarNav({ orgs, logoutAction }: Props) {
   const pathname     = usePathname();
   const searchParams = useSearchParams();
-  const paramOrgId   = searchParams.get("org");
+  const paramOrgId   = searchParams.get('org');
 
   const activeOrg = resolveActiveOrg(orgs, pathname, paramOrgId);
 
   const isActive = (href: string) => {
-    const path = href.split("?")[0];
-    if (path === "/dashboard") return pathname === "/dashboard";
+    const path = href.split('?')[0];
+    if (path === '/dashboard') return pathname === '/dashboard';
     return pathname.startsWith(path);
   };
 
   const itemCls = (active: boolean) =>
     [
-      "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium",
-      "transition-all duration-150 group w-full",
+      'flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium',
+      'transition-all duration-150 group w-full',
       active
-        ? "bg-white/80 text-[var(--foreground)] shadow-sm"
-        : "text-[var(--foreground)]/70 hover:bg-white/50 hover:text-[var(--foreground)]",
-    ].join(" ");
+        ? 'bg-white/80 text-[var(--foreground)] shadow-sm'
+        : 'text-[var(--foreground)]/70 hover:bg-white/50 hover:text-[var(--foreground)]',
+    ].join(' ');
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
 
-        {/* Organizaciones — siempre visible */}
-        <Link href="/organizations" className={itemCls(pathname === "/organizations")}>
-          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: "#7CAE7A" }} />
+        <Link href="/organizations" className={itemCls(pathname === '/organizations')}>
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: '#7CAE7A' }} />
           Organizaciones
         </Link>
 
-        {/* Nav contextual — solo cuando hay una org activa */}
         {activeOrg && (
           <>
             <div className="pt-4 pb-1 px-4">
@@ -97,7 +89,6 @@ export function SidebarNav({ orgs, logoutAction }: Props) {
         )}
       </nav>
 
-      {/* Cerrar sesión */}
       <div className="px-3 py-4 shrink-0 border-t border-[var(--border)]">
         <form action={logoutAction}>
           <button
