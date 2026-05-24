@@ -15,13 +15,18 @@ interface Props {
   logoutAction: () => Promise<void>;
 }
 
-const NAV_ITEMS = (orgId: string) => [
-  { href: `/dashboard?org=${orgId}`,               label: 'Dashboard',   dot: '#d4a373' },
-  { href: `/clients?org=${orgId}`,                 label: 'Clientes',    dot: '#f472b6' },
-  { href: `/tickets?org=${orgId}`,                 label: 'Tickets',     dot: '#E07B54' },
-  { href: `/scheduling?org=${orgId}`,              label: 'Agenda',      dot: '#9B8BB4' },
-  { href: `/notifications/broadcast?org=${orgId}`, label: 'Broadcast',   dot: '#34d399' },
-  { href: `/documents?org=${orgId}`,               label: 'Documentos',  dot: '#60a5fa' },
+const PAYMENT_ORG_TYPES = ['residential', 'real_estate', 'conjuntos', 'inmobiliaria', 'propiedad_horizontal'];
+
+const NAV_ITEMS = (orgId: string, orgType: string) => [
+  { href: `/dashboard?org=${orgId}`,               label: 'Dashboard',  dot: '#d4a373' },
+  { href: `/clients?org=${orgId}`,                 label: 'Clientes',   dot: '#f472b6' },
+  { href: `/tickets?org=${orgId}`,                 label: 'Tickets',    dot: '#E07B54' },
+  { href: `/scheduling?org=${orgId}`,              label: 'Agenda',     dot: '#9B8BB4' },
+  { href: `/notifications/broadcast?org=${orgId}`, label: 'Broadcast',  dot: '#34d399' },
+  { href: `/documents?org=${orgId}`,               label: 'Documentos', dot: '#60a5fa' },
+  ...(PAYMENT_ORG_TYPES.includes(orgType)
+    ? [{ href: `/payments?org=${orgId}`, label: 'Pagos', dot: '#facc15' }]
+    : []),
 ];
 
 function resolveActiveOrg(orgs: Org[], pathname: string, paramOrgId: string | null): Org | null {
@@ -76,7 +81,7 @@ export function SidebarNav({ orgs, logoutAction }: Props) {
               </p>
             </div>
 
-            {NAV_ITEMS(activeOrg.id).map(({ href, label, dot }) => (
+            {NAV_ITEMS(activeOrg.id, activeOrg.type).map(({ href, label, dot }) => (
               <Link key={href} href={href} className={itemCls(isActive(href))}>
                 <span
                   className="w-2 h-2 rounded-full shrink-0 transition-transform duration-150 group-hover:scale-125"
