@@ -28,6 +28,13 @@ function getAdmin() {
   );
 }
 
+const PRIORITY_LABEL: Record<string, string> = {
+  urgent: "🔴 Urgente",
+  high:   "🟠 Alta",
+  medium: "🟡 Media",
+  low:    "🟢 Baja",
+};
+
 export async function createTicketAction(formData: FormData) {
   try {
     const user    = await requireAuth();
@@ -70,12 +77,37 @@ export async function createTicketAction(formData: FormData) {
       newValue: { title: parsed.data.title, priority: parsed.data.priority, status: "open" },
     });
 
-    notifyOrgAdmins(
-      orgId,
-      `🎫 Nuevo ticket: ${parsed.data.title}`,
-      `Creado por un miembro. Revisa los tickets pendientes.`,
-      "info"
-    ).catch(() => {});
+    // — Notificación según prioridad —
+    const priority  = parsed.data.priority;
+    const isUrgent  = priority === "urgent";
+    const isHigh    = priority === "high";
+    const prioLabel = PRIORITY_LABEL[priority] ?? priority;
+
+    if (isUrgent) {
+      // Urgente: notificación de error (rojo) para llamar la atención inmediatamente
+      notifyOrgAdmins(
+        orgId,
+        `🚨 Ticket urgente: ${parsed.data.title}`,
+        `Prioridad ${prioLabel} — requiere atención inmediata. Asigna un responsable ahora.`,
+        "error"
+      ).catch(() => {});
+    } else if (isHigh) {
+      // Alta: warning (amarillo)
+      notifyOrgAdmins(
+        orgId,
+        `⚠️ Ticket de alta prioridad: ${parsed.data.title}`,
+        `Prioridad ${prioLabel} — revísalo pronto y asigna un responsable.`,
+        "warning"
+      ).catch(() => {});
+    } else {
+      // Media / Baja: info normal
+      notifyOrgAdmins(
+        orgId,
+        `🎫 Nuevo ticket: ${parsed.data.title}`,
+        `Prioridad ${prioLabel} — pendiente de revisión.`,
+        "info"
+      ).catch(() => {});
+    }
 
     revalidatePath("/tickets");
     revalidatePath("/dashboard");
@@ -92,10 +124,18 @@ export async function changeTicketStatusAction(ticketId: string, status: TicketS
     await requireOrgRole(orgId, ["owner", "admin", "member"]);
 
     let previousStatus: string | null = null;
+    let ticketTitle:    string | null = null;
+    let creatorId:      string | null = null;
     try {
       const admin = getAdmin();
-      const { data: t } = await admin.from("tickets").select("status").eq("id", ticketId).single();
-      previousStatus = t?.status ?? null;
+      const { data: t } = await admin
+        .from("tickets")
+        .select("status, title, creator_id")
+        .eq("id", ticketId)
+        .single();
+      previousStatus = t?.status    ?? null;
+      ticketTitle    = t?.title     ?? null;
+      creatorId      = t?.creator_id ?? null;
     } catch { /* continuar */ }
 
     await updateTicketStatus(ticketId, status);
@@ -107,19 +147,33 @@ export async function changeTicketStatusAction(ticketId: string, status: TicketS
       newValue: { status },
     });
 
-    if (status === "resolved") {
-      try {
-        const admin = getAdmin();
-        const { data: ticket } = await admin.from("tickets").select("creator_id, title").eq("id", ticketId).single();
-        if (ticket) {
-          createNotification(
-            orgId, ticket.creator_id,
-            "✅ Tu ticket fue resuelto",
-            `"${ticket.title}" ha sido marcado como resuelto.`,
-            "success"
-          ).catch(() => {});
-        }
-      } catch { /* continuar */ }
+    // — Notificaciones por cambio de estado —
+    if (status === "resolved" && creatorId && ticketTitle) {
+      createNotification(
+        orgId, creatorId,
+        `✅ Ticket resuelto: ${ticketTitle}`,
+        `El ticket ha sido marcado como resuelto. Si el problema persiste, puédelo reabrir.`,
+        "success"
+      ).catch(() => {});
+    }
+
+    if (status === "closed" && creatorId && ticketTitle) {
+      createNotification(
+        orgId, creatorId,
+        `📦 Ticket cerrado: ${ticketTitle}`,
+        `El ticket fue cerrado definitivamente.`,
+        "info"
+      ).catch(() => {});
+    }
+
+    if (status === "rejected") {
+      // Notificar a admins que un ticket fue rechazado (para auditoría)
+      notifyOrgAdmins(
+        orgId,
+        `❌ Ticket rechazado: ${ticketTitle ?? ticketId}`,
+        `Un ticket fue marcado como rechazado. Verifica el historial si fue un error.`,
+        "warning"
+      ).catch(() => {});
     }
 
     revalidatePath(`/tickets/${ticketId}`);
@@ -141,6 +195,25 @@ export async function respondToTicketAction(formData: FormData) {
     if (!response) return { error: "La respuesta no puede estar vacía" };
 
     await respondToTicket(ticketId, response);
+
+    // Notificar al creador del ticket que recibió respuesta
+    try {
+      const admin = getAdmin();
+      const { data: t } = await admin
+        .from("tickets")
+        .select("creator_id, title")
+        .eq("id", ticketId)
+        .single();
+      if (t?.creator_id) {
+        createNotification(
+          orgId, t.creator_id,
+          `💬 Respuesta en tu ticket: ${t.title}`,
+          `El equipo ha respondido a tu solicitud. Entra al ticket para ver los detalles.`,
+          "info"
+        ).catch(() => {});
+      }
+    } catch { /* no bloquear */ }
+
     createAuditLog({
       orgId, userId: user.id, entityType: "ticket", entityId: ticketId,
       action: "responded",
@@ -164,6 +237,27 @@ export async function assignTicketAction(formData: FormData) {
 
     const newAssignee = assignedTo && String(assignedTo) !== "" ? String(assignedTo) : null;
     await assignTicket(ticketId, newAssignee);
+
+    // Notificar a la persona asignada
+    if (newAssignee) {
+      try {
+        const admin = getAdmin();
+        const { data: t } = await admin
+          .from("tickets")
+          .select("title")
+          .eq("id", ticketId)
+          .single();
+        if (t?.title) {
+          createNotification(
+            orgId, newAssignee,
+            `👤 Se te asignó un ticket: ${t.title}`,
+            `Tienes un nuevo ticket asignado. Revísalo y actualiza su estado.`,
+            "info"
+          ).catch(() => {});
+        }
+      } catch { /* no bloquear */ }
+    }
+
     createAuditLog({
       orgId, userId: user.id, entityType: "ticket", entityId: ticketId,
       action: "assigned", newValue: { assigned_to: newAssignee },
