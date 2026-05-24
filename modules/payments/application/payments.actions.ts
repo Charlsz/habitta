@@ -60,7 +60,6 @@ export async function seedDemoPayments(orgId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("No autenticado");
 
-  // Get residents
   const { data: residents } = await supabase
     .from("residents")
     .select("id, full_name")
@@ -74,35 +73,36 @@ export async function seedDemoPayments(orgId: string) {
   const now = new Date();
 
   const rows = residents.flatMap((r: any, i: number) => {
-    const base = [
+    const base: Record<string, any>[] = [
       {
-        organization_id: orgId,
-        resident_id: r.id,
-        resident_name: r.full_name,
-        concept: concepts[i % concepts.length],
-        amount: [320000, 150000, 500000, 85000, 120000][i % 5],
-        currency: "COP",
-        due_date: new Date(now.getFullYear(), now.getMonth() + 1, 5).toISOString().split("T")[0],
-        status: "pending",
+        organization_id:  orgId,
+        resident_id:      r.id,
+        resident_name:    r.full_name,
+        concept:          concepts[i % concepts.length],
+        amount:           [320000, 150000, 500000, 85000, 120000][i % 5],
+        currency:         "COP",
+        due_date:         new Date(now.getFullYear(), now.getMonth() + 1, 5).toISOString().split("T")[0],
+        status:           "pending",
         telegram_chat_id: null,
-        notes: null,
+        notes:            null,
       },
     ];
-    // Add one overdue
+
     if (i === 0) {
       base.push({
-        organization_id: orgId,
-        resident_id: r.id,
-        resident_name: r.full_name,
-        concept: "Administración mes anterior",
-        amount: 320000,
-        currency: "COP",
-        due_date: new Date(now.getFullYear(), now.getMonth(), 5).toISOString().split("T")[0],
-        status: "overdue",
+        organization_id:  orgId,
+        resident_id:      r.id,
+        resident_name:    r.full_name,
+        concept:          "Administración mes anterior",
+        amount:           320000,
+        currency:         "COP",
+        due_date:         new Date(now.getFullYear(), now.getMonth(), 5).toISOString().split("T")[0],
+        status:           "overdue",
         telegram_chat_id: null,
-        notes: "Pago pendiente del mes anterior",
+        notes:            "Pago pendiente del mes anterior",
       });
     }
+
     return base;
   });
 
@@ -131,9 +131,9 @@ export async function sendTelegramReminder(paymentId: string, orgId: string) {
   const anonKey    = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
   const res = await fetch(`${supabaseUrl}/functions/v1/send-payment-reminder`, {
-    method: "POST",
+    method:  "POST",
     headers: {
-      "Content-Type": "application/json",
+      "Content-Type":  "application/json",
       "Authorization": `Bearer ${anonKey}`,
     },
     body: JSON.stringify({ payment }),
