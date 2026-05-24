@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { Button } from "@/modules/core/components";
 
 interface Org {
@@ -14,35 +14,32 @@ interface Org {
 
 interface Props {
   orgs:         Org[];
-  logoutAction: () => Promise<never>;
+  logoutAction: () => Promise<void>;
 }
 
-// Íconos emoji ligeros — sin dependencias extra
 const ORG_TYPE_ICON: Record<string, string> = {
   residential:  "🏘",
   real_estate:  "🏢",
   construction: "🏗",
-  commercial:   "🏬",
+  commercial:   "🏪",
 };
 
 function navItems(orgId: string) {
   return [
-    { href: `/dashboard?org=${orgId}`,                  label: "Dashboard",    dot: "#d4a373" },
-    { href: `/clients?org=${orgId}`,                    label: "Clientes",     dot: "#f472b6" },
-    { href: `/assets?org=${orgId}`,                     label: "Unidades",     dot: "#6B9AB8" },
-    { href: `/tickets?org=${orgId}`,                    label: "Tickets",      dot: "#E07B54" },
-    { href: `/scheduling?org=${orgId}`,                 label: "Agenda",       dot: "#9B8BB4" },
-    { href: `/notifications/broadcast?org=${orgId}`,    label: "Broadcast",    dot: "#34d399" },
-    { href: `/dashboard/analytics?org=${orgId}`,        label: "Analytics",    dot: "#a78bfa" },
+    { href: `/dashboard?org=${orgId}`,                label: "Dashboard",  dot: "#d4a373" },
+    { href: `/clients?org=${orgId}`,                  label: "Clientes",   dot: "#f472b6" },
+    { href: `/assets?org=${orgId}`,                   label: "Unidades",   dot: "#6B9AB8" },
+    { href: `/tickets?org=${orgId}`,                  label: "Tickets",    dot: "#E07B54" },
+    { href: `/scheduling?org=${orgId}`,               label: "Agenda",     dot: "#9B8BB4" },
+    { href: `/notifications/broadcast?org=${orgId}`,  label: "Broadcast",  dot: "#34d399" },
+    { href: `/dashboard/analytics?org=${orgId}`,      label: "Analytics",  dot: "#a78bfa" },
   ];
 }
 
 export function SidebarNav({ orgs, logoutAction }: Props) {
-  const pathname      = usePathname();
-  const searchParams  = useSearchParams();
-  const [, startTransition] = useTransition();
+  const pathname     = usePathname();
+  const searchParams = useSearchParams();
 
-  // Org activa: primero la del ?org=, luego la primera disponible
   const paramOrgId = searchParams.get("org");
   const activeOrg  = orgs.find(o => o.id === paramOrgId) ?? orgs[0];
   const activeId   = activeOrg?.id ?? "";
@@ -57,7 +54,7 @@ export function SidebarNav({ orgs, logoutAction }: Props) {
 
   return (
     <>
-      {/* ── Enlace Organizaciones ── */}
+      {/* ── Organizaciones ── */}
       <div className="px-3 pt-2 pb-1">
         <Link
           href="/organizations"
@@ -73,7 +70,7 @@ export function SidebarNav({ orgs, logoutAction }: Props) {
         </Link>
       </div>
 
-      {/* ── Selector de org activa ── */}
+      {/* ── Selector org activa ── */}
       {activeOrg && (
         <div className="mx-3 mb-2">
           <button
@@ -89,7 +86,6 @@ export function SidebarNav({ orgs, logoutAction }: Props) {
             <span className="text-[var(--muted)] text-xs">{selectorOpen ? "▲" : "▼"}</span>
           </button>
 
-          {/* Dropdown de orgs */}
           {selectorOpen && orgs.length > 1 && (
             <div className="mt-1 rounded-[8px] border border-[var(--border)] bg-white/90 shadow-lg overflow-hidden">
               {orgs.map(o => (
@@ -112,14 +108,14 @@ export function SidebarNav({ orgs, logoutAction }: Props) {
         </div>
       )}
 
-      {/* ── Separador visual ── */}
+      {/* ── Divisor ── */}
       {activeOrg && (
         <div className="mx-5 mb-2">
           <div className="border-t border-[var(--border)]" />
         </div>
       )}
 
-      {/* ── Nav items de la org activa ── */}
+      {/* ── Nav items ── */}
       <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto pb-4">
         {activeId ? (
           navItems(activeId).map(({ href, label, dot }) => (
@@ -141,7 +137,6 @@ export function SidebarNav({ orgs, logoutAction }: Props) {
             </Link>
           ))
         ) : (
-          // Sin org: solo mostrar el acceso a Organizaciones
           <p className="px-3 py-3 text-xs text-[var(--muted)]">
             Selecciona una organización para continuar.
           </p>
