@@ -37,7 +37,7 @@ export async function getPayments(orgId: string): Promise<Payment[]> {
   return (data ?? []) as Payment[];
 }
 
-// ── Mark payment as paid (demo) ───────────────────────────────────────────
+// ── Mark payment as paid ────────────────────────────────────────────────
 export async function markPaymentPaid(paymentId: string, orgId: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -113,23 +113,30 @@ export async function seedDemoPayments(orgId: string) {
 }
 
 // ── Send Telegram reminder via Edge Function ───────────────────────────────────
-export async function sendTelegramReminder(
-  paymentId: string,
-  orgId: string,
-  customMessage?: string
-) {
+export async function sendTelegramReminder(paymentId: string, orgId: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("No autenticado");
 
+  // Fetch payment with resident's linked chat_session to get the real telegram_chat_id
   const { data: payment } = await supabase
     .from("payments")
-    .select("*")
+    .select(`
+      *,
+      residents!resident_id(
+        telegram_session_id,
+        chat_sessions(telegram_chat_id)
+      )
+    `)
     .eq("id", paymentId)
     .eq("organization_id", orgId)
     .maybeSingle();
 
   if (!payment) return { ok: false, error: "Pago no encontrado" };
+
+  // Resolve telegram_chat_id: from resident's chat_session, fallback to payment column
+  const residentChatId = (payment as any).residents?.chat_sessions?.telegram_chat_id ?? null;
+  const chatId = residentChatId ?? payment.telegram_chat_id;
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const anonKey    = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -140,7 +147,7 @@ export async function sendTelegramReminder(
       "Content-Type":  "application/json",
       "Authorization": `Bearer ${anonKey}`,
     },
-    body: JSON.stringify({ payment, customMessage }),
+    body: JSON.stringify({ payment: { ...payment, telegram_chat_id: chatId } }),
   });
 
   const json = await res.json().catch(() => ({}));
