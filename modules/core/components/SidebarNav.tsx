@@ -68,30 +68,22 @@ export function SidebarNav({ orgs, logoutAction }: Props) {
   return (
     <div className="flex flex-col flex-1 min-h-0">
 
-      {/* ── Logo header ─────────────────────────────────────────── */}
+      {/* ── Logo header ────────────────────────────────────────── */}
       <Link
         href="/organizations"
-        className="flex items-center gap-3 px-5 py-5 shrink-0 hover:opacity-80 transition-opacity"
+        className="flex items-center px-5 py-5 shrink-0 hover:opacity-80 transition-opacity"
       >
         <Image
           src="/habitta_icon.png"
           alt="Habitta"
-          width={36}
-          height={36}
-          className="rounded-xl shadow-sm"
-          priority
-        />
-        <Image
-          src="/habitta_monochrome.png"
-          alt="Habitta"
-          width={90}
-          height={28}
+          width={120}
+          height={40}
           className="object-contain"
           priority
         />
       </Link>
 
-      {/* ── Nav items ───────────────────────────────────────────── */}
+      {/* ── Nav items ────────────────────────────────────────── */}
       <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
 
         <Link href="/organizations" className={itemCls(pathname === '/organizations')}>
@@ -120,7 +112,7 @@ export function SidebarNav({ orgs, logoutAction }: Props) {
         )}
       </nav>
 
-      {/* ── Logout ──────────────────────────────────────────────── */}
+      {/* ── Logout ──────────────────────────────────────────── */}
       <div className="px-3 py-4 shrink-0 border-t border-[var(--border)]">
         <form action={logoutAction}>
           <button
