@@ -2,8 +2,14 @@
 
 import { useState, useTransition } from 'react';
 import { updateAssetAction, deleteAssetAction, createAssetAction } from '../application/asset.actions';
-import { ASSET_TYPE_LABELS, type AssetType } from '../domain/asset.schema';
-import type { AssetInsert } from '../domain/asset.schema';
+import {
+  ASSET_TYPE_LABELS,
+  ASSET_TYPE_ICONS,
+  getAssetTypesForOrg,
+  getOrgAssetContext,
+  type AssetType,
+  type AssetInsert,
+} from '../domain/asset.schema';
 
 interface Asset {
   id:          string;
@@ -15,32 +21,25 @@ interface Asset {
   status:      string;
 }
 
-const ASSET_TYPE_ICONS: Record<AssetType, string> = {
-  apartment:   '🏠',
-  house:       '🏡',
-  parking:     '🚗',
-  common_area: '🌿',
-  office:      '🏢',
-  warehouse:   '📦',
-  land:        '🌱',
-  other:       '📌',
-};
-
 const FIELD = 'w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm focus:outline-none focus:ring-1 focus:ring-[#d4a373]';
 const LABEL = 'block text-xs font-medium text-[var(--muted)] mb-1';
 
 function AssetForm({
   organizationId,
+  orgType,
   asset,
   onClose,
   onSaved,
 }: {
   organizationId: string;
-  asset?: Asset;
-  onClose: () => void;
-  onSaved: (saved: Asset) => void;
+  orgType?:       string | null;
+  asset?:         Asset;
+  onClose:        () => void;
+  onSaved:        (saved: Asset) => void;
 }) {
-  const isEdit = !!asset;
+  const isEdit   = !!asset;
+  const ctx      = getOrgAssetContext(orgType);
+  const types    = getAssetTypesForOrg(orgType);
   const [error, setError]    = useState<string | null>(null);
   const [isPending, startTx] = useTransition();
 
@@ -48,7 +47,7 @@ function AssetForm({
     e.preventDefault();
     const fd        = new FormData(e.currentTarget);
     const name      = (fd.get('name') as string).trim();
-    const assetType = (fd.get('asset_type') as AssetType) || 'other';
+    const assetType = (fd.get('asset_type') as AssetType) || ctx.defaultType;
     const code      = (fd.get('code') as string) || null;
     const location  = (fd.get('location') as string) || null;
     const desc      = (fd.get('description') as string) || null;
@@ -67,7 +66,7 @@ function AssetForm({
         const data: AssetInsert = {
           organization_id: organizationId,
           name,
-          code:        code ?? `ACT-${Date.now()}`,
+          code:        code ?? `ESP-${Date.now()}`,
           asset_type:  assetType,
           location,
           description: desc,
@@ -75,7 +74,15 @@ function AssetForm({
         };
         const res = await createAssetAction(data);
         if (res?.error) { setError(res.error); return; }
-        onSaved({ id: '', ...data, code: data.code ?? null, location: data.location ?? null, description: data.description ?? null, status: 'active', asset_type: assetType });
+        onSaved({
+          id: '',
+          ...data,
+          code:        data.code ?? null,
+          location:    data.location ?? null,
+          description: data.description ?? null,
+          status:      'active',
+          asset_type:  assetType,
+        });
       }
       onClose();
     });
@@ -90,42 +97,47 @@ function AssetForm({
       )}
 
       <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-        {isEdit ? '✏️ Editar unidad' : '➕ Nueva unidad'}
+        {isEdit ? `✏️ Editar ${ctx.entityLabel.toLowerCase()}` : `➕ Nuevo ${ctx.entityLabel.toLowerCase()}`}
       </p>
 
+      {/* Nombre y Código */}
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className={LABEL}>Nombre *</label>
           <input name="name" required defaultValue={asset?.name} className={FIELD}
-            placeholder="Apto 301, Local 4..." />
+            placeholder={ctx.namePlaceholder} />
         </div>
         <div>
           <label className={LABEL}>Código / Referencia</label>
           <input name="code" defaultValue={asset?.code ?? ''} className={FIELD}
-            placeholder="301, L-04..." />
+            placeholder={ctx.codePlaceholder} />
         </div>
       </div>
 
+      {/* Tipo y Ubicación */}
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className={LABEL}>Tipo</label>
-          <select name="asset_type" defaultValue={asset?.asset_type ?? 'other'} className={FIELD}>
-            {(Object.entries(ASSET_TYPE_LABELS) as [AssetType, string][]).map(([v, l]) => (
-              <option key={v} value={v}>{ASSET_TYPE_ICONS[v]} {l}</option>
+          <select name="asset_type" defaultValue={asset?.asset_type ?? ctx.defaultType} className={FIELD}>
+            {types.map((v) => (
+              <option key={v} value={v}>
+                {ASSET_TYPE_ICONS[v]} {ASSET_TYPE_LABELS[v]}
+              </option>
             ))}
           </select>
         </div>
         <div>
-          <label className={LABEL}>Ubicación / Torre</label>
+          <label className={LABEL}>Ubicación</label>
           <input name="location" defaultValue={asset?.location ?? ''} className={FIELD}
-            placeholder="Torre A, Piso 3..." />
+            placeholder={ctx.locationPlaceholder} />
         </div>
       </div>
 
+      {/* Descripción */}
       <div>
         <label className={LABEL}>Descripción (opcional)</label>
         <input name="description" defaultValue={asset?.description ?? ''} className={FIELD}
-          placeholder="Apartamento 3 habitaciones con balcón..." />
+          placeholder={`Información adicional sobre este ${ctx.entityLabel.toLowerCase()}...`} />
       </div>
 
       <div className="flex gap-2 justify-end">
@@ -136,7 +148,7 @@ function AssetForm({
         <button type="submit" disabled={isPending}
           className="px-4 py-2 rounded-lg text-sm text-white font-semibold disabled:opacity-50"
           style={{ backgroundColor: '#d4a373' }}>
-          {isPending ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Crear unidad'}
+          {isPending ? 'Guardando...' : isEdit ? 'Guardar cambios' : `Crear ${ctx.entityLabel.toLowerCase()}`}
         </button>
       </div>
     </form>
@@ -145,18 +157,21 @@ function AssetForm({
 
 export function AssetManager({
   organizationId,
+  orgType,
   initialAssets,
 }: {
   organizationId: string;
+  orgType?:       string | null;
   initialAssets:  Asset[];
 }) {
-  const [assets, setAssets]        = useState<Asset[]>(initialAssets);
-  const [showForm, setShowForm]    = useState(false);
-  const [editingAsset, setEditing] = useState<Asset | undefined>();
-  const [deletingId, setDeleting]  = useState<string | null>(null);
+  const ctx                                    = getOrgAssetContext(orgType);
+  const [assets, setAssets]                    = useState<Asset[]>(initialAssets);
+  const [showForm, setShowForm]                = useState(false);
+  const [editingAsset, setEditing]             = useState<Asset | undefined>();
+  const [deletingId, setDeleting]              = useState<string | null>(null);
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Eliminar esta unidad? Si tiene clientes o tickets asignados puede causar errores.')) return;
+    if (!confirm(`¿Eliminar este ${ctx.entityLabel.toLowerCase()}? Si tiene clientes o tickets asignados puede causar errores.`)) return;
     setDeleting(id);
     const res = await deleteAssetAction(id, organizationId);
     if (!res?.error) setAssets(prev => prev.filter(a => a.id !== id));
@@ -168,21 +183,25 @@ export function AssetManager({
       const idx = prev.findIndex(a => a.id === saved.id);
       if (idx >= 0) {
         const next = [...prev];
-        next[idx] = saved;
+        next[idx]  = saved;
         return next;
       }
+      // Si es nuevo, recargamos lista desde el server en el próximo render
+      // (revalidatePath ya se llama en la action)
       return prev;
     });
   };
 
   return (
     <div className="space-y-4">
+      {/* Encabezado */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-base font-semibold text-[var(--foreground)]">🏢 Unidades registradas</h2>
-          <p className="text-xs text-[var(--muted)] mt-0.5">
-            Aquí registras los espacios físicos de tu propiedad: apartamentos, locales, parqueaderos, etc.
-            Una vez creados, puedes asignarlos a clientes y vincularlos a tickets y citas.
+          <h2 className="text-base font-semibold text-[var(--foreground)]">
+            {ctx.headerEmoji} {ctx.entityLabelPlural} registrados
+          </h2>
+          <p className="text-xs text-[var(--muted)] mt-0.5 max-w-lg">
+            {ctx.moduleDescription}
           </p>
         </div>
         {!showForm && !editingAsset && (
@@ -190,27 +209,30 @@ export function AssetManager({
             onClick={() => { setEditing(undefined); setShowForm(true); }}
             className="px-3 py-1.5 rounded-lg text-sm text-white font-semibold shrink-0"
             style={{ backgroundColor: '#d4a373' }}>
-            + Nueva unidad
+            + {ctx.entityLabel} nuevo
           </button>
         )}
       </div>
 
+      {/* Formulario */}
       {(showForm || editingAsset) && (
         <AssetForm
           organizationId={organizationId}
+          orgType={orgType}
           asset={editingAsset}
           onClose={() => { setShowForm(false); setEditing(undefined); }}
           onSaved={handleSaved}
         />
       )}
 
+      {/* Lista vacía */}
       {assets.length === 0 && !showForm && !editingAsset ? (
         <div className="text-center py-8 text-sm text-[var(--muted)] border border-dashed border-[var(--border)] rounded-xl">
-          <p className="text-2xl mb-2">🏗️</p>
-          <p>Aún no has registrado ninguna unidad.</p>
-          <p className="text-xs mt-1">Crea la primera para poder asignarla a clientes.</p>
+          <p className="text-2xl mb-2">{ctx.headerEmoji}</p>
+          <p>{ctx.emptyText}</p>
         </div>
       ) : (
+        /* Lista de espacios */
         <div className="divide-y divide-[var(--border)] rounded-xl border border-[var(--border)] overflow-hidden">
           {assets.map((a) => (
             <div key={a.id}
