@@ -2,20 +2,20 @@
 
 import { createClient } from "@/lib/supabase/server";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────────────────────────────────
 export type AIOperation = {
   table: string;
   type: "update" | "insert" | "delete";
-  match?: Record<string, unknown>;   // WHERE clause
-  payload?: Record<string, unknown>; // SET values
+  match?: Record<string, unknown>;   // WHERE clause (update/delete)
+  payload?: Record<string, unknown>; // SET values (update) or row data (insert)
 };
 
 export type AIActionResponse = {
   type: "action";
-  description: string;             // Human-readable description
-  confirmation_message: string;    // What the AI will do (shown before confirming)
-  operations: AIOperation[];       // Forward operations
-  undo_operations: AIOperation[];  // Reverse operations (snapshot-based)
+  description: string;
+  confirmation_message: string;
+  operations: AIOperation[];
+  undo_operations: AIOperation[];
 };
 
 export type AIAnswerResponse = {
@@ -25,7 +25,7 @@ export type AIAnswerResponse = {
 
 export type AIResponse = AIActionResponse | AIAnswerResponse;
 
-// ─── getOrganizationAIContext ────────────────────────────────────────────────
+// ─── getOrganizationAIContext ──────────────────────────────────────────────────────────
 export async function getOrganizationAIContext(orgId?: string) {
   const supabase = await createClient();
 
@@ -87,7 +87,7 @@ export async function getOrganizationAIContext(orgId?: string) {
 
   const { data: clients } = await supabase
     .from("residents")
-    .select("id, full_name, email, phone, status, relation_type, move_in_date, move_out_date, document_type, document_number, notes")
+    .select("id, full_name, email, phone, status, relation_type, move_in_date, move_out_date, document_type, document_number, notes, unit_number")
     .eq("organization_id", resolvedOrgId)
     .order("full_name", { ascending: true });
 
@@ -139,7 +139,7 @@ export async function getOrganizationAIContext(orgId?: string) {
   };
 }
 
-// ─── askAIAssistant ─────────────────────────────────────────────────────────
+// ─── askAIAssistant ───────────────────────────────────────────────────────────────────
 export async function askAIAssistant(
   messages: { role: string; content: string }[],
   context: Awaited<ReturnType<typeof getOrganizationAIContext>>
@@ -148,6 +148,7 @@ export async function askAIAssistant(
   if (!apiKey) throw new Error("OPENROUTER_API_KEY no configurado");
 
   const orgName = context?.org?.name ?? "la organización";
+  const orgId   = context?.orgId ?? "";
 
   const ticketLines = (context?.allTickets ?? [])
     .slice(0, 60)
@@ -157,7 +158,7 @@ export async function askAIAssistant(
 
   const clientLines = (context?.clients ?? [])
     .map((c: any) =>
-      `- [${c.id}] ${c.full_name} (${c.relation_type ?? "—"}) | ${c.status} | email: ${c.email ?? "—"} | tel: ${c.phone ?? "—"} | ingreso: ${c.move_in_date ?? "—"}${c.move_out_date ? ` | salida: ${c.move_out_date}` : ""}`
+      `- [${c.id}] ${c.full_name} (${c.relation_type ?? "—"}) | ${c.status} | email: ${c.email ?? "—"} | tel: ${c.phone ?? "—"} | doc: ${c.document_type ?? ""} ${c.document_number ?? ""} | ingreso: ${c.move_in_date ?? "—"}${c.move_out_date ? ` | salida: ${c.move_out_date}` : ""}`
     ).join("\n");
 
   const assetLines = (context?.assets ?? [])
@@ -176,85 +177,91 @@ export async function askAIAssistant(
       `- "${b.message?.slice(0, 80)}..." | ${b.recipient_count ?? 0} destinatarios | ${b.sent_at ? new Date(b.sent_at).toLocaleDateString("es-CO") : "—"}`
     ).join("\n");
 
-  const systemPrompt = `Eres el asistente interno de Habitta para la organización **${orgName}**.
-Respondes preguntas Y puedes ejecutar acciones sobre la base de datos de esta organización.
+  const systemPrompt = `Eres el asistente interno de Habitta para la organización **${orgName}** (ID: ${orgId}).
+Respondes preguntas Y ejecutas acciones sobre la base de datos.
 Hoy es ${new Date().toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}.
 
-Tablas y campos disponibles para modificar:
-- tickets: status (open|in_progress|on_hold|resolved|closed|rejected), priority (low|medium|high|urgent), title, description
-- residents: status (active|inactive), notes, phone, email
-- events: status (pending|approved|completed|rejected)
-- assets: status, name
+═══ CAMPOS PERMITIDOS POR TABLA ═══
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ACTUALIZACIoN (update):
+- tickets:   status (open|in_progress|on_hold|resolved|closed|rejected), priority (low|medium|high|urgent), title, description
+- residents: status (active|inactive), full_name, email, phone, document_type, document_number, relation_type, move_in_date, move_out_date, unit_number, notes
+- events:    status (pending|approved|completed|rejected)
+- assets:    status, name
+
+CREACIoN (insert) — el campo organization_id se inyecta automáticamente, NO lo incluyas en payload:
+- residents: full_name (requerido), email, phone, document_type (cedula_ciudadania|cedula_extranjeria|pasaporte|nit), document_number, relation_type (propietario|arrendatario|residente|empleado|visitante), move_in_date (YYYY-MM-DD), move_out_date, unit_number, status (active|inactive, default active), notes
+- tickets:   title (requerido), type (incidencia|mantenimiento|novedad_obra|pqr|solicitud_administrativa|solicitud_visita|queja_operativa|requerimiento_documental), priority (low|medium|high|urgent), status (open), description
+- assets:    name (requerido), code, type, status
+
+═══ DATOS ACTUALES DE LA ORG ═══
+
 📋 TICKETS (${context?.counts.total} total)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Estado: abiertos ${context?.counts.open} | en progreso ${context?.counts.in_progress} | en espera ${context?.counts.on_hold} | resueltos ${context?.counts.resolved} | cerrados ${context?.counts.closed} | rechazados ${context?.counts.rejected}
 Prioridad activa: urgentes ${context?.counts.urgent} | alta ${context?.counts.high}
 Este mes: ${context?.counts.thisMonth}
-
-Lista (con ID):
 ${ticketLines || "Sin tickets."}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
-👥 CLIENTES (${context?.clientCounts.total} total)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👥 CLIENTES/RESIDENTES (${context?.clientCounts.total} total)
 Activos: ${context?.clientCounts.active} | Inactivos: ${context?.clientCounts.inactive}
-
 ${clientLines || "Sin clientes registrados."}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🏠 UNIDADES / ACTIVOS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${assetLines || "Sin unidades registradas."}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📅 AGENDA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${eventLines || "Sin eventos."}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📢 BROADCASTS (últimos ${context?.broadcasts.length})
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${broadcastLines || "Sin broadcasts enviados."}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
-INSTRUCCIONES DE RESPUESTA:
+═══ INSTRUCCIONES DE RESPUESTA ═══
 
-Siempre responde con JSON válido. Dos formatos posibles:
+Siempre responde con JSON válido puro (sin bloques de código, sin texto extra). Dos formatos:
 
-1. Respuesta informativa (preguntas, análisis):
-{"type":"answer","content":"Tu respuesta aquí en texto plano"}
+1. Respuesta informativa:
+{"type":"answer","content":"Tu respuesta"}
 
-2. Acción sobre la BD (cuando el admin pide hacer un cambio):
+2. Acción sobre la BD — SIEMPRE pide confirmación antes de ejecutar:
 {
   "type": "action",
-  "description": "Descripción breve de qué hará",
-  "confirmation_message": "Mensaje al admin explicando exactamente qué se cambiará",
+  "description": "Acción breve",
+  "confirmation_message": "Explica exactamente qué se hará (qué datos se crearán/modificarán)",
   "operations": [
     {
-      "table": "tickets",
-      "type": "update",
-      "match": {"id": "uuid-aqui"},
-      "payload": {"status": "resolved"}
+      "table": "residents",
+      "type": "insert",
+      "payload": {
+        "full_name": "Carlos Galvis",
+        "email": "cg@email.com",
+        "phone": "3001234567",
+        "document_type": "cedula_ciudadania",
+        "document_number": "1234567890",
+        "relation_type": "residente",
+        "move_in_date": "2025-05-24",
+        "unit_number": "Apto 804",
+        "notes": "Tiene una mascota (perro)",
+        "status": "active"
+      }
     }
   ],
-  "undo_operations": [
-    {
-      "table": "tickets",
-      "type": "update",
-      "match": {"id": "uuid-aqui"},
-      "payload": {"status": "open"}
-    }
-  ]
+  "undo_operations": []
 }
 
-REGLAS ABSOLUTAS:
-- Responde SIEMPRE con JSON puro, sin bloques de código, sin texto extra.
-- Para undo_operations, usa SIEMPRE los valores actuales del contexto (estado anterior real).
-- Solo modifica tablas y campos permitidos. Nada de DELETE masivo ni borrar datos críticos.
-- Si no tienes suficiente información para identificar el registro exacto, pregunta con type:answer.
-- Nunca inventes IDs. Usa solo los IDs del contexto.`;
+Para UPDATE incluye "match" con el ID del registro:
+{
+  "table": "tickets",
+  "type": "update",
+  "match": {"id": "uuid-del-registro"},
+  "payload": {"status": "resolved"}
+}
+
+REGLAS:
+- NUNCA incluyas organization_id en payload — se inyecta automáticamente.
+- Para undo de un insert, usa type:"delete" con match:{"id":"__last_inserted__"} — el sistema lo maneja.
+- Para undo de un update, usa los valores anteriores del contexto.
+- Nunca inventes IDs. Solo usa IDs del contexto.
+- Si falta información crítica, pregunta con type:answer.`;
 
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
@@ -268,7 +275,7 @@ REGLAS ABSOLUTAS:
       model: "openai/gpt-4o-mini",
       messages: [{ role: "system", content: systemPrompt }, ...messages],
       temperature: 0.1,
-      max_tokens: 1500,
+      max_tokens: 1800,
     }),
   });
 
@@ -290,7 +297,6 @@ REGLAS ABSOLUTAS:
     }
   }
 
-  // Fallback: if AI returned plain text without JSON structure
   if (!(parsed as any).type) {
     parsed = { type: "answer", content: raw };
   }
@@ -298,7 +304,7 @@ REGLAS ABSOLUTAS:
   return parsed;
 }
 
-// ─── executeAIAction ─────────────────────────────────────────────────────────
+// ─── executeAIAction ────────────────────────────────────────────────────────────────────
 export async function executeAIAction(
   operations: AIOperation[],
   orgId: string
@@ -308,7 +314,6 @@ export async function executeAIAction(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "No autenticado" };
 
-  // Verify user belongs to org
   const { data: membership } = await supabase
     .from("organization_members")
     .select("organization_id")
@@ -318,33 +323,97 @@ export async function executeAIAction(
 
   if (!membership) return { ok: false, error: "Sin permisos para esta organización" };
 
-  // Allowed tables and fields (security guard)
-  const ALLOWED: Record<string, string[]> = {
+  // Allowed tables + fields per operation type
+  const ALLOWED_UPDATE: Record<string, string[]> = {
     tickets:   ["status", "priority", "title", "description"],
-    residents: ["status", "notes", "phone", "email"],
+    residents: ["status", "full_name", "notes", "phone", "email", "document_type", "document_number", "relation_type", "move_in_date", "move_out_date", "unit_number"],
     events:    ["status"],
     assets:    ["status", "name"],
   };
 
+  const ALLOWED_INSERT: Record<string, string[]> = {
+    residents: ["full_name", "email", "phone", "document_type", "document_number", "relation_type", "move_in_date", "move_out_date", "unit_number", "status", "notes"],
+    tickets:   ["title", "type", "priority", "status", "description"],
+    assets:    ["name", "code", "type", "status"],
+  };
+
+  // Track last inserted IDs for undo support
+  const insertedIds: Record<string, string> = {};
+
   for (const op of operations) {
-    if (!ALLOWED[op.table]) {
-      return { ok: false, error: `Tabla '${op.table}' no permitida` };
-    }
-    if (op.payload) {
+    // ── INSERT ────────────────────────────────────────────────────────────────────
+    if (op.type === "insert") {
+      if (!ALLOWED_INSERT[op.table]) {
+        return { ok: false, error: `Inserción no permitida en tabla '${op.table}'` };
+      }
+      if (!op.payload) return { ok: false, error: "INSERT sin payload" };
+
+      // Filter to allowed fields only
+      const safePayload: Record<string, unknown> = { organization_id: orgId };
       for (const key of Object.keys(op.payload)) {
-        if (!ALLOWED[op.table].includes(key)) {
-          return { ok: false, error: `Campo '${key}' en '${op.table}' no permitido` };
+        if (ALLOWED_INSERT[op.table].includes(key)) {
+          safePayload[key] = op.payload[key];
         }
       }
+
+      const { data: inserted, error } = await supabase
+        .from(op.table as any)
+        .insert(safePayload)
+        .select("id")
+        .single();
+
+      if (error) return { ok: false, error: error.message };
+      if (inserted?.id) insertedIds[op.table] = inserted.id;
+      continue;
     }
 
-    if (op.type === "update" && op.match && op.payload) {
-      let query = supabase.from(op.table as any).update(op.payload as any);
+    // ── UPDATE ────────────────────────────────────────────────────────────────────
+    if (op.type === "update") {
+      if (!ALLOWED_UPDATE[op.table]) {
+        return { ok: false, error: `Tabla '${op.table}' no permitida` };
+      }
+      if (!op.match || Object.keys(op.match).length === 0) {
+        return { ok: false, error: `UPDATE en '${op.table}' requiere un match (WHERE clause)` };
+      }
+      if (!op.payload) return { ok: false, error: "UPDATE sin payload" };
+
+      const safePayload: Record<string, unknown> = {};
+      for (const key of Object.keys(op.payload)) {
+        if (!ALLOWED_UPDATE[op.table].includes(key)) {
+          return { ok: false, error: `Campo '${key}' en '${op.table}' no permitido` };
+        }
+        safePayload[key] = op.payload[key];
+      }
+
+      let query = supabase.from(op.table as any).update(safePayload);
       for (const [col, val] of Object.entries(op.match)) {
         query = (query as any).eq(col, val);
       }
+      // Always scope to org for extra safety
+      query = (query as any).eq("organization_id", orgId);
       const { error } = await (query as any);
       if (error) return { ok: false, error: error.message };
+      continue;
+    }
+
+    // ── DELETE ────────────────────────────────────────────────────────────────────
+    if (op.type === "delete") {
+      const allowedDeleteTables = ["residents", "tickets", "assets"];
+      if (!allowedDeleteTables.includes(op.table)) {
+        return { ok: false, error: `Eliminación no permitida en tabla '${op.table}'` };
+      }
+      if (!op.match || Object.keys(op.match).length === 0) {
+        return { ok: false, error: `DELETE en '${op.table}' requiere un match` };
+      }
+
+      let query = supabase.from(op.table as any).delete();
+      for (const [col, val] of Object.entries(op.match)) {
+        query = (query as any).eq(col, val);
+      }
+      query = (query as any).eq("organization_id", orgId);
+      const { error } = await (query as any);
+      if (error) return { ok: false, error: error.message };
+      continue;
     }
   }
 
