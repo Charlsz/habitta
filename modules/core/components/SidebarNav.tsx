@@ -15,17 +15,18 @@ interface Props {
   logoutAction: () => Promise<void>;
 }
 
-const PAYMENT_ORG_TYPES = ['residential', 'real_estate', 'conjuntos', 'inmobiliaria', 'propiedad_horizontal'];
+const RESIDENTIAL_TYPES = ['residential', 'real_estate', 'residencial', 'inmobiliaria'];
 
 const NAV_ITEMS = (orgId: string, orgType: string) => [
-  { href: `/dashboard?org=${orgId}`,               label: 'Dashboard',  dot: '#d4a373' },
-  { href: `/clients?org=${orgId}`,                 label: 'Clientes',   dot: '#f472b6' },
-  { href: `/tickets?org=${orgId}`,                 label: 'Tickets',    dot: '#E07B54' },
-  { href: `/scheduling?org=${orgId}`,              label: 'Agenda',     dot: '#9B8BB4' },
-  { href: `/notifications/broadcast?org=${orgId}`, label: 'Broadcast',  dot: '#34d399' },
-  { href: `/documents?org=${orgId}`,               label: 'Documentos', dot: '#60a5fa' },
-  ...(PAYMENT_ORG_TYPES.includes(orgType)
-    ? [{ href: `/payments?org=${orgId}`, label: 'Pagos', dot: '#facc15' }]
+  { href: `/dashboard?org=${orgId}`,               label: 'Dashboard',   dot: '#d4a373' },
+  { href: `/clients?org=${orgId}`,                 label: 'Clientes',    dot: '#f472b6' },
+  { href: `/tickets?org=${orgId}`,                 label: 'Tickets',     dot: '#E07B54' },
+  { href: `/scheduling?org=${orgId}`,              label: 'Agenda',      dot: '#9B8BB4' },
+  { href: `/notifications/broadcast?org=${orgId}`, label: 'Broadcast',   dot: '#34d399' },
+  { href: `/documents?org=${orgId}`,               label: 'Documentos',  dot: '#60a5fa' },
+  // Payments: only for residential / real_estate orgs
+  ...(RESIDENTIAL_TYPES.includes(orgType?.toLowerCase?.() ?? '')
+    ? [{ href: `/payments?org=${orgId}`, label: 'Pagos', dot: '#a78bfa' }]
     : []),
 ];
 
