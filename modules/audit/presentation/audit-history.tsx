@@ -1,5 +1,12 @@
 import type { AuditLog, AuditAction } from "../infrastructure/audit.repository";
 
+const PRIORITY_ES: Record<string, string> = {
+  urgent: "🔴 Urgente",
+  high:   "🟠 Alta",
+  medium: "🟡 Media",
+  low:    "🟢 Baja",
+};
+
 const ACTION_META: Record<
   AuditAction,
   { icon: string; label: (log: AuditLog) => string; color: string }
@@ -23,6 +30,17 @@ const ACTION_META: Record<
       if (from && to)  return `Estado cambiado: ${from} → ${to}`;
       if (to)          return `Estado cambiado a: ${to}`;
       return "Estado actualizado";
+    },
+  },
+  priority_changed: {
+    icon: "🎯",
+    color: "bg-orange-100 text-orange-700",
+    label: (log) => {
+      const from = PRIORITY_ES[(log.old_value?.priority as string) ?? ""] ?? log.old_value?.priority;
+      const to   = PRIORITY_ES[(log.new_value?.priority as string) ?? ""] ?? log.new_value?.priority;
+      if (from && to) return `Prioridad cambiada: ${from} → ${to}`;
+      if (to)         return `Prioridad cambiada a: ${to}`;
+      return "Prioridad actualizada";
     },
   },
   assigned: {
@@ -90,12 +108,12 @@ export function AuditHistory({ logs }: Props) {
             const meta       = ACTION_META[action] ?? ACTION_META.updated;
             const label      = meta.label(log);
             const who        = log.profiles?.full_name ?? "Sistema";
-            // Extraer valores como string — evita unknown en JSX
             const oldStatus  = String(log.old_value?.status ?? "");
             const newStatus  = String(log.new_value?.status ?? "");
             const previewMsg = String(log.new_value?.message ?? log.new_value?.response ?? "");
-            const showStatus = action === "status_changed" && oldStatus.length > 0 && newStatus.length > 0;
-            const showPreview = (action === "commented" || action === "responded") && previewMsg.length > 0;
+            const showStatus   = action === "status_changed" && oldStatus.length > 0 && newStatus.length > 0;
+            const showPriority = action === "priority_changed";
+            const showPreview  = (action === "commented" || action === "responded") && previewMsg.length > 0;
 
             return (
               <li key={log.id} className="ml-5 pb-5">
@@ -124,6 +142,18 @@ export function AuditHistory({ logs }: Props) {
                       <span className="text-xs text-[var(--muted)]">→</span>
                       <span className="text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-600">
                         {STATUS_ES[newStatus] ?? newStatus}
+                      </span>
+                    </div>
+                  )}
+
+                  {showPriority && (
+                    <div className="mt-2 flex gap-2 flex-wrap">
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-orange-50 text-orange-500">
+                        {PRIORITY_ES[String(log.old_value?.priority ?? "")] ?? String(log.old_value?.priority ?? "—")}
+                      </span>
+                      <span className="text-xs text-[var(--muted)]">→</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-semibold">
+                        {PRIORITY_ES[String(log.new_value?.priority ?? "")] ?? String(log.new_value?.priority ?? "—")}
                       </span>
                     </div>
                   )}
