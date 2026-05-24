@@ -15,28 +15,26 @@ interface Props {
   logoutAction: () => Promise<void>;
 }
 
+// Nav items que aparecen cuando hay una org activa
+// Unidades vive dentro de la ficha del cliente — no necesita entrada propia en el sidebar
 const NAV_ITEMS = (orgId: string) => [
   { href: `/dashboard?org=${orgId}`,               label: "Dashboard",  dot: "#d4a373" },
   { href: `/clients?org=${orgId}`,                 label: "Clientes",   dot: "#f472b6" },
-  { href: `/assets?org=${orgId}`,                  label: "Unidades",   dot: "#6B9AB8" },
   { href: `/tickets?org=${orgId}`,                 label: "Tickets",    dot: "#E07B54" },
   { href: `/scheduling?org=${orgId}`,              label: "Agenda",     dot: "#9B8BB4" },
   { href: `/notifications/broadcast?org=${orgId}`, label: "Broadcast",  dot: "#34d399" },
-  { href: `/dashboard/analytics?org=${orgId}`,     label: "Analytics",  dot: "#a78bfa" },
 ];
 
 /**
- * Extrae el org activo desde:
- * 1. ?org= en la query string (cualquier página)
- * 2. /organizations/[id]  (detalle de org)
+ * Detecta la org activa desde:
+ * 1. ?org= en la query string
+ * 2. /organizations/[id] en el pathname
  */
 function resolveActiveOrg(orgs: Org[], pathname: string, paramOrgId: string | null): Org | null {
-  // Prioridad 1: ?org=
   if (paramOrgId) {
     const found = orgs.find((o) => o.id === paramOrgId);
     if (found) return found;
   }
-  // Prioridad 2: /organizations/[id]
   const match = pathname.match(/^\/organizations\/([^/]+)/);
   if (match) {
     const found = orgs.find((o) => o.id === match[1]);
@@ -99,7 +97,7 @@ export function SidebarNav({ orgs, logoutAction }: Props) {
         )}
       </nav>
 
-      {/* Cerrar sesión — siempre al fondo */}
+      {/* Cerrar sesión */}
       <div className="px-3 py-4 shrink-0 border-t border-[var(--border)]">
         <form action={logoutAction}>
           <button
