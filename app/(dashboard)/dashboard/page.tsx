@@ -13,6 +13,7 @@ import {
   CalendarClock,
   UserX,
   Building2,
+  ShieldAlert,
 } from "lucide-react";
 import Link from "next/link";
 import { TicketStatus } from "@/modules/tickets/domain/ticket.schema";
@@ -89,7 +90,7 @@ export default async function DashboardPage({
       </div>
 
       {/* KPI CARDS */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
         <KPIBox
           title="Total Tickets"
           value={metrics.totalTickets}
@@ -116,6 +117,26 @@ export default async function DashboardPage({
           icon={<UserX className="w-5 h-5 text-red-400" />}
           highlight={metrics.unassignedTickets > 0}
         />
+        {/* Nueva tarjeta SLA en riesgo — clickeable */}
+        <Link
+          href={`/tickets?org=${currentOrgId}&sla=at_risk`}
+          className={`habitta-card p-5 flex flex-col justify-between transition-all hover:ring-2 hover:ring-offset-1 ${
+            metrics.atRiskCount > 0
+              ? "ring-2 ring-red-300 ring-offset-1 hover:ring-red-400"
+              : "hover:ring-[#d4a373]"
+          }`}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-sm text-[var(--muted)]">En riesgo SLA</h3>
+            <div className="p-2 bg-[rgba(255,255,255,0.55)] rounded-md">
+              <ShieldAlert className={`w-5 h-5 ${metrics.atRiskCount > 0 ? "text-red-500" : "text-[var(--muted)]"}`} />
+            </div>
+          </div>
+          <p className={`habitta-title text-3xl ${metrics.atRiskCount > 0 ? "text-red-500" : ""}`}>
+            {metrics.atRiskCount}
+          </p>
+          <p className="text-xs text-[var(--muted)] mt-1">Ver tickets →</p>
+        </Link>
       </div>
 
       {/* CHARTS + ACTIVIDAD + TOP ACTIVOS */}
